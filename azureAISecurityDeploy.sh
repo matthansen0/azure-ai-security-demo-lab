@@ -423,12 +423,18 @@ EOF
         
         # Configure App Service to trust X-Forwarded-For headers from Front Door
         # Set AZURE_FRONTDOOR_ID to enable Front Door integration
+        # Set FORWARDED_ALLOW_IPS=* to trust proxy headers from Front Door
+        # Note: The application must be configured to use these settings
         if az webapp config appsettings set \
             --name "$APP_SERVICE_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --settings "AZURE_FRONTDOOR_ID=${AFD_PROFILE_ID}" \
+            --settings "AZURE_FRONTDOOR_ID=${AFD_PROFILE_ID}" "FORWARDED_ALLOW_IPS=*" \
             --only-show-errors >/dev/null 2>&1; then
-            echo "App Service configured to trust Front Door headers."
+            echo "App Service configured with Front Door settings."
+            echo "⚠️  Note: The application must be configured to respect proxy headers."
+            echo "   The azure-search-openai-demo app may need to be modified to:"
+            echo "   - Add ProxyHeadersMiddleware to the Quart application, OR"
+            echo "   - Configure the custom uvicorn worker with proxy_headers=True"
         else
             echo "Warning: Could not configure App Service settings for Front Door."
         fi
