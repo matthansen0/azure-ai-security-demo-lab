@@ -194,9 +194,10 @@ COSMOS_MARK="➖"; [ "$COSMOS_SUB_STATUS" = "already enabled" ] && COSMOS_MARK="
 echo "- Defender plan (App Services) at subscription: $APPSVC_MARK $APPSVC_SUB_STATUS"
 echo "- Defender plan (Cosmos DBs) at subscription: $COSMOS_MARK $COSMOS_SUB_STATUS"
 
-# Print comprehensive summary
-print_summary
+# Initialize AFD status before printing summary
 AFD_STATUS="➖"
+
+# Deploy Azure Front Door with WAF
 AFD_PROFILE_NAME="fd-${RESOURCE_GROUP}"
 AFD_ENDPOINT_NAME="endpoint-${RESOURCE_GROUP}"
 AFD_ORIGIN_GROUP_NAME="appservice-origin-group"
@@ -241,7 +242,13 @@ else
         # Step 2: Create WAF policy using ARM API
         echo "Creating WAF policy: $AFD_WAF_POLICY_NAME"
         WAF_POLICY_URL="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Network/frontdoorwebapplicationfirewallpolicies/${AFD_WAF_POLICY_NAME}?api-version=2024-02-01"
-        WAF_POLICY_BODY=$(cat <<EOF
+        
+        # Check if WAF policy already exists
+        WAF_POLICY_EXISTS=$(az rest --method GET --url "$WAF_POLICY_URL" --query id -o tsv 2>/dev/null || true)
+        if [ -n "$WAF_POLICY_EXISTS" ]; then
+            echo "WAF policy already exists."
+        else
+            WAF_POLICY_BODY=$(cat <<EOF
 {
   "location": "Global",
   "sku": {
@@ -270,11 +277,12 @@ else
 }
 EOF
 )
-        if az rest --method PUT --url "$WAF_POLICY_URL" --body "$WAF_POLICY_BODY" --headers "Content-Type=application/json" --only-show-errors; then
-            echo "WAF policy created successfully."
-        else
-            echo "Failed to create WAF policy."
-            AFD_STATUS="❌"
+            if az rest --method PUT --url "$WAF_POLICY_URL" --body "$WAF_POLICY_BODY" --headers "Content-Type=application/json" --only-show-errors; then
+                echo "WAF policy created successfully."
+            else
+                echo "Failed to create WAF policy."
+                AFD_STATUS="❌"
+            fi
         fi
     fi
     
@@ -464,6 +472,9 @@ EOF
         echo "⚠️  Direct access to App Service URL is now restricted."
     fi
 fi
+
+# Print final comprehensive summary
+print_summary
 
 echo
 echo "All specified security features have been attempted for resources in $RESOURCE_GROUP."
