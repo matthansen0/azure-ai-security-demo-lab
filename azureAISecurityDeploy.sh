@@ -431,12 +431,79 @@ EOF
             --settings "AZURE_FRONTDOOR_ID=${AFD_PROFILE_ID}" "FORWARDED_ALLOW_IPS=*" \
             --only-show-errors >/dev/null 2>&1; then
             echo "App Service configured with Front Door settings."
-            echo "⚠️  Note: The application must be configured to respect proxy headers."
-            echo "   The azure-search-openai-demo app may need to be modified to:"
-            echo "   - Add ProxyHeadersMiddleware to the Quart application, OR"
-            echo "   - Configure the custom uvicorn worker with proxy_headers=True"
         else
             echo "Warning: Could not configure App Service settings for Front Door."
+        fi
+        
+        # Step 8b: Patch the application code to add ProxyHeadersMiddleware
+        echo "Patching application code to add proxy header middleware..."
+        
+        # Determine the app directory from the state file
+        APP_DIR=""
+        if [ -f "$STATE_FILE" ]; then
+            # shellcheck disable=SC1090
+            source "$STATE_FILE"
+            if [ -n "${AZD_WORKDIR:-}" ] && [ -d "${AZD_WORKDIR}" ]; then
+                APP_DIR="${AZD_WORKDIR}/app/backend"
+            fi
+        fi
+        
+        if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
+            echo "⚠️  Warning: Could not locate app directory to patch proxy middleware."
+            echo "   App directory: ${APP_DIR:-not found}"
+            echo "   You may need to manually add ProxyHeadersMiddleware to the app."
+        else
+            # Check if app.py exists
+            if [ -f "$APP_DIR/app.py" ]; then
+                # Check if ProxyHeadersMiddleware is already added
+                if grep -q "ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                    echo "ProxyHeadersMiddleware already present in app.py"
+                else
+                    echo "Adding ProxyHeadersMiddleware to app.py..."
+                    
+                    # Create a backup
+                    cp "$APP_DIR/app.py" "$APP_DIR/app.py.bak"
+                    
+                    # Add the import after the quart_cors import
+                    if grep -q "from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                        echo "Import already exists"
+                    else
+                        # Add import after quart_cors import
+                        sed -i '/from quart_cors import cors/a from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware' "$APP_DIR/app.py"
+                    fi
+                    
+                    # Add middleware configuration in create_app function
+                    # Find the line where app is registered and add middleware after
+                    if grep -q "app.asgi_app = ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                        echo "Middleware already configured"
+                    else
+                        # Add after app.register_blueprint(chat_history_cosmosdb_bp)
+                        sed -i '/app.register_blueprint(chat_history_cosmosdb_bp)/a \    # Configure proxy headers middleware for Azure Front Door\n    app.asgi_app = ProxyHeadersMiddleware(app.asgi_app, trusted_hosts=["*"])' "$APP_DIR/app.py"
+                    fi
+                    
+                    echo "✅ ProxyHeadersMiddleware added to app.py"
+                    echo "   Redeploying application to App Service..."
+                    
+                    # Trigger redeployment using azd
+                    if [ -n "${AZD_WORKDIR:-}" ] && [ -d "${AZD_WORKDIR}" ]; then
+                        (
+                            cd "$AZD_WORKDIR"
+                            if [ -n "${AZD_ENV:-}" ]; then
+                                azd deploy -e "$AZD_ENV" --only-show-errors || echo "⚠️  Warning: Deployment may have failed. Please check azd output."
+                            else
+                                azd deploy --only-show-errors || echo "⚠️  Warning: Deployment may have failed. Please check azd output."
+                            fi
+                        )
+                        echo "✅ Application redeployed with proxy middleware"
+                    else
+                        echo "⚠️  Warning: Could not trigger automatic redeployment."
+                        echo "   Please run 'azd deploy' manually to apply the changes."
+                    fi
+                fi
+            else
+                echo "⚠️  Warning: app.py not found at $APP_DIR/app.py"
+                echo "   Manual configuration may be required."
+            fi
         fi
         
         # Configure App Service access restrictions to only allow traffic from Front Door
