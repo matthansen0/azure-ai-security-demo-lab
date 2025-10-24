@@ -77,7 +77,7 @@ chmod +x *.sh; ./deploy-sample-and-secure.sh --env azure-ai-search-demo
 - [ ] Create a real architecture diagram that's not ASCII.
 - [ ] Add APIM with [Defender for APIs](https://learn.microsoft.com/azure/defender-for-cloud/defender-for-apis-introduction)
 - [ ] Integrate [Data-Aware Threat Protection and Security Posture](https://learn.microsoft.com/azure/defender-for-cloud/concept-data-aware-security) features
-- [ ] Add Azure Front Door + WAF
+- [x] Add Azure Front Door + WAF
 - [ ] Build SQL data source and enable [Defender for SQL](https://learn.microsoft.com/azure/defender-for-cloud/defender-for-sql-introduction)
 - [ ] Deploy Microsoft Purview for Data Classification, and DLP
 - [ ] Integrate Azure AI Content Safety in [application code](https://learn.microsoft.com/azure/ai-services/content-safety/overview)

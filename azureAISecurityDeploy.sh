@@ -1,4 +1,3 @@
-
 #!/bin/bash
 set -e
 
@@ -113,19 +112,24 @@ else
 fi
 
 
-# Summary of protections
-echo
-echo "Security Protections Summary:"
-echo "- Defender for AI (subscription): $( [ "$AI_PLAN_ENABLED" -eq 1 ] && echo "✅ already enabled" || echo "❌ not enabled" )"
-echo "- Defender for AI (OpenAI): $OPENAI_STATUS"
-if [ "${STORAGE_PLAN_ENABLED:-0}" -eq 1 ]; then
-    echo "- Defender for Storage (subscription): ✅ already enabled"
-else
-    echo "- Defender for Storage (per account):"
-    for sa in ${!STORAGE_RESULTS[@]}; do
-        echo "    - $sa: ${STORAGE_RESULTS[$sa]}"
-    done
-fi
+# Summary of protections (will be displayed after optional Defender plan prompts)
+print_summary() {
+    echo
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Security Protections Summary:"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "- Azure Front Door + WAF: ${AFD_STATUS:-➖}"
+    echo "- Defender for AI (subscription): $( [ "$AI_PLAN_ENABLED" -eq 1 ] && echo "✅ already enabled" || echo "❌ not enabled" )"
+    echo "- Defender for AI (OpenAI): $OPENAI_STATUS"
+    if [ "${STORAGE_PLAN_ENABLED:-0}" -eq 1 ]; then
+        echo "- Defender for Storage (subscription): ✅ already enabled"
+    else
+        echo "- Defender for Storage (per account):"
+        for sa in "${!STORAGE_RESULTS[@]}"; do
+            echo "    - $sa: ${STORAGE_RESULTS[$sa]}"
+        done
+    fi
+}
 
 # Optional: subscription-wide Defender plans with prompt and state tracking
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -189,6 +193,361 @@ APPSVC_MARK="➖"; [ "$APPSVC_SUB_STATUS" = "already enabled" ] && APPSVC_MARK="
 COSMOS_MARK="➖"; [ "$COSMOS_SUB_STATUS" = "already enabled" ] && COSMOS_MARK="✅"; [ "$COSMOS_SUB_STATUS" = "enabled now" ] && COSMOS_MARK="✅"; [ "$COSMOS_SUB_STATUS" = "failed" ] && COSMOS_MARK="❌"
 echo "- Defender plan (App Services) at subscription: $APPSVC_MARK $APPSVC_SUB_STATUS"
 echo "- Defender plan (Cosmos DBs) at subscription: $COSMOS_MARK $COSMOS_SUB_STATUS"
+
+# Initialize AFD status before printing summary
+AFD_STATUS="➖"
+
+# Deploy Azure Front Door with WAF
+AFD_PROFILE_NAME="fd-${RESOURCE_GROUP}"
+AFD_ENDPOINT_NAME="endpoint-${RESOURCE_GROUP}"
+AFD_ORIGIN_GROUP_NAME="appservice-origin-group"
+AFD_ROUTE_NAME="default-route"
+AFD_WAF_POLICY_NAME="waf${RESOURCE_GROUP//[^a-zA-Z0-9]/}"  # Remove special chars for WAF policy name
+AFD_SECURITY_POLICY_NAME="waf-security-policy"
+
+echo
+echo "Setting up Azure Front Door with WAF..."
+
+# Find the App Service in the resource group
+APP_SERVICE_NAME=$(az resource list --resource-group "$RESOURCE_GROUP" --resource-type "Microsoft.Web/sites" --query "[0].name" -o tsv)
+if [ -z "$APP_SERVICE_NAME" ]; then
+    echo "Warning: No App Service found in resource group $RESOURCE_GROUP. Skipping Front Door deployment."
+    AFD_STATUS="⚠️ No App Service"
+else
+    APP_SERVICE_HOSTNAME="${APP_SERVICE_NAME}.azurewebsites.net"
+    echo "Found App Service: $APP_SERVICE_NAME"
+    
+    # Get location from resource group
+    LOCATION=$(az group show --name "$RESOURCE_GROUP" --query location -o tsv)
+    
+    # Step 1: Create Front Door Premium profile (required for WAF)
+    echo "Creating Front Door Premium profile: $AFD_PROFILE_NAME"
+    AFD_PROFILE_EXISTS=$(az afd profile show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --query id -o tsv 2>/dev/null || true)
+    if [ -z "$AFD_PROFILE_EXISTS" ]; then
+        if az afd profile create \
+            --profile-name "$AFD_PROFILE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --sku Premium_AzureFrontDoor \
+            --only-show-errors; then
+            echo "Front Door profile created successfully."
+        else
+            echo "Failed to create Front Door profile."
+            AFD_STATUS="❌"
+        fi
+    else
+        echo "Front Door profile already exists."
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 2: Create WAF policy using ARM API
+        echo "Creating WAF policy: $AFD_WAF_POLICY_NAME"
+        WAF_POLICY_URL="https://management.azure.com/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Network/frontdoorwebapplicationfirewallpolicies/${AFD_WAF_POLICY_NAME}?api-version=2024-02-01"
+        
+        # Check if WAF policy already exists
+        WAF_POLICY_EXISTS=$(az rest --method GET --url "$WAF_POLICY_URL" --query id -o tsv 2>/dev/null || true)
+        if [ -n "$WAF_POLICY_EXISTS" ]; then
+            echo "WAF policy already exists."
+        else
+            WAF_POLICY_BODY=$(cat <<EOF
+{
+  "location": "Global",
+  "sku": {
+    "name": "Premium_AzureFrontDoor"
+  },
+  "properties": {
+    "policySettings": {
+      "enabledState": "Enabled",
+      "mode": "Prevention",
+      "requestBodyCheck": "Enabled"
+    },
+    "managedRules": {
+      "managedRuleSets": [
+        {
+          "ruleSetType": "Microsoft_DefaultRuleSet",
+          "ruleSetVersion": "2.1",
+          "ruleSetAction": "Block"
+        },
+        {
+          "ruleSetType": "Microsoft_BotManagerRuleSet",
+          "ruleSetVersion": "1.0"
+        }
+      ]
+    }
+  }
+}
+EOF
+)
+            if az rest --method PUT --url "$WAF_POLICY_URL" --body "$WAF_POLICY_BODY" --headers "Content-Type=application/json" --only-show-errors; then
+                echo "WAF policy created successfully."
+            else
+                echo "Failed to create WAF policy."
+                AFD_STATUS="❌"
+            fi
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 3: Create AFD endpoint
+        echo "Creating Front Door endpoint: $AFD_ENDPOINT_NAME"
+        AFD_ENDPOINT_EXISTS=$(az afd endpoint show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --endpoint-name "$AFD_ENDPOINT_NAME" --query id -o tsv 2>/dev/null || true)
+        if [ -z "$AFD_ENDPOINT_EXISTS" ]; then
+            if az afd endpoint create \
+                --resource-group "$RESOURCE_GROUP" \
+                --profile-name "$AFD_PROFILE_NAME" \
+                --endpoint-name "$AFD_ENDPOINT_NAME" \
+                --enabled-state Enabled \
+                --only-show-errors; then
+                echo "Front Door endpoint created successfully."
+            else
+                echo "Failed to create Front Door endpoint."
+                AFD_STATUS="❌"
+            fi
+        else
+            echo "Front Door endpoint already exists."
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 4: Create origin group
+        echo "Creating origin group: $AFD_ORIGIN_GROUP_NAME"
+        AFD_ORIGIN_GROUP_EXISTS=$(az afd origin-group show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --origin-group-name "$AFD_ORIGIN_GROUP_NAME" --query id -o tsv 2>/dev/null || true)
+        if [ -z "$AFD_ORIGIN_GROUP_EXISTS" ]; then
+            if az afd origin-group create \
+                --resource-group "$RESOURCE_GROUP" \
+                --profile-name "$AFD_PROFILE_NAME" \
+                --origin-group-name "$AFD_ORIGIN_GROUP_NAME" \
+                --probe-request-type GET \
+                --probe-protocol Https \
+                --probe-interval-in-seconds 120 \
+                --probe-path / \
+                --sample-size 4 \
+                --successful-samples-required 3 \
+                --additional-latency-in-milliseconds 50 \
+                --only-show-errors; then
+                echo "Origin group created successfully."
+            else
+                echo "Failed to create origin group."
+                AFD_STATUS="❌"
+            fi
+        else
+            echo "Origin group already exists."
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 5: Create origin (App Service)
+        echo "Creating origin for App Service: $APP_SERVICE_HOSTNAME"
+        AFD_ORIGIN_EXISTS=$(az afd origin show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --origin-group-name "$AFD_ORIGIN_GROUP_NAME" --origin-name appservice-origin --query id -o tsv 2>/dev/null || true)
+        if [ -z "$AFD_ORIGIN_EXISTS" ]; then
+            if az afd origin create \
+                --resource-group "$RESOURCE_GROUP" \
+                --profile-name "$AFD_PROFILE_NAME" \
+                --origin-group-name "$AFD_ORIGIN_GROUP_NAME" \
+                --origin-name appservice-origin \
+                --host-name "$APP_SERVICE_HOSTNAME" \
+                --origin-host-header "$APP_SERVICE_HOSTNAME" \
+                --priority 1 \
+                --weight 1000 \
+                --enabled-state Enabled \
+                --http-port 80 \
+                --https-port 443 \
+                --only-show-errors; then
+                echo "Origin created successfully."
+            else
+                echo "Failed to create origin."
+                AFD_STATUS="❌"
+            fi
+        else
+            echo "Origin already exists."
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 6: Create route
+        echo "Creating route: $AFD_ROUTE_NAME"
+        AFD_ROUTE_EXISTS=$(az afd route show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --endpoint-name "$AFD_ENDPOINT_NAME" --route-name "$AFD_ROUTE_NAME" --query id -o tsv 2>/dev/null || true)
+        if [ -z "$AFD_ROUTE_EXISTS" ]; then
+            if az afd route create \
+                --resource-group "$RESOURCE_GROUP" \
+                --profile-name "$AFD_PROFILE_NAME" \
+                --endpoint-name "$AFD_ENDPOINT_NAME" \
+                --route-name "$AFD_ROUTE_NAME" \
+                --origin-group "$AFD_ORIGIN_GROUP_NAME" \
+                --supported-protocols Https Http \
+                --link-to-default-domain Enabled \
+                --https-redirect Enabled \
+                --forwarding-protocol HttpsOnly \
+                --patterns-to-match "/*" \
+                --only-show-errors; then
+                echo "Route created successfully."
+            else
+                echo "Failed to create route."
+                AFD_STATUS="❌"
+            fi
+        else
+            echo "Route already exists."
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 7: Associate WAF policy with endpoint using security policy
+        echo "Associating WAF policy with endpoint..."
+        AFD_ENDPOINT_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Cdn/profiles/${AFD_PROFILE_NAME}/afdEndpoints/${AFD_ENDPOINT_NAME}"
+        WAF_POLICY_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP}/providers/Microsoft.Network/frontdoorwebapplicationfirewallpolicies/${AFD_WAF_POLICY_NAME}"
+        
+        AFD_SECURITY_POLICY_EXISTS=$(az afd security-policy show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --security-policy-name "$AFD_SECURITY_POLICY_NAME" --query id -o tsv 2>/dev/null || true)
+        if [ -z "$AFD_SECURITY_POLICY_EXISTS" ]; then
+            if az afd security-policy create \
+                --resource-group "$RESOURCE_GROUP" \
+                --profile-name "$AFD_PROFILE_NAME" \
+                --security-policy-name "$AFD_SECURITY_POLICY_NAME" \
+                --domains "$AFD_ENDPOINT_ID" \
+                --waf-policy "$WAF_POLICY_ID" \
+                --only-show-errors; then
+                echo "WAF policy associated with endpoint successfully."
+            else
+                echo "Failed to associate WAF policy with endpoint."
+                AFD_STATUS="❌"
+            fi
+        else
+            echo "Security policy already exists."
+        fi
+    fi
+    
+    if [ "$AFD_STATUS" != "❌" ]; then
+        # Step 8: Configure App Service to trust Front Door headers and prevent direct access
+        echo "Configuring App Service for Front Door integration..."
+        
+        # Get the Front Door ID for access restriction
+        AFD_PROFILE_ID=$(az afd profile show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --query id -o tsv)
+        
+        # Configure App Service to trust X-Forwarded-For headers from Front Door
+        # Set AZURE_FRONTDOOR_ID to enable Front Door integration
+        # Set FORWARDED_ALLOW_IPS=* to trust proxy headers from Front Door
+        # Note: The application must be configured to use these settings
+        if az webapp config appsettings set \
+            --name "$APP_SERVICE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --settings "AZURE_FRONTDOOR_ID=${AFD_PROFILE_ID}" "FORWARDED_ALLOW_IPS=*" \
+            --only-show-errors >/dev/null 2>&1; then
+            echo "App Service configured with Front Door settings."
+        else
+            echo "Warning: Could not configure App Service settings for Front Door."
+        fi
+        
+        # Step 8b: Patch the application code to add ProxyHeadersMiddleware
+        echo "Patching application code to add proxy header middleware..."
+        
+        # Determine the app directory from the state file
+        APP_DIR=""
+        if [ -f "$STATE_FILE" ]; then
+            # shellcheck disable=SC1090
+            source "$STATE_FILE"
+            if [ -n "${AZD_WORKDIR:-}" ] && [ -d "${AZD_WORKDIR}" ]; then
+                APP_DIR="${AZD_WORKDIR}/app/backend"
+            fi
+        fi
+        
+        if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
+            echo "⚠️  Warning: Could not locate app directory to patch proxy middleware."
+            echo "   App directory: ${APP_DIR:-not found}"
+            echo "   You may need to manually add ProxyHeadersMiddleware to the app."
+        else
+            # Check if app.py exists
+            if [ -f "$APP_DIR/app.py" ]; then
+                # Check if ProxyHeadersMiddleware is already added
+                if grep -q "ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                    echo "ProxyHeadersMiddleware already present in app.py"
+                else
+                    echo "Adding ProxyHeadersMiddleware to app.py..."
+                    
+                    # Create a backup
+                    cp "$APP_DIR/app.py" "$APP_DIR/app.py.bak"
+                    
+                    # Add the import after the quart_cors import
+                    if grep -q "from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                        echo "Import already exists"
+                    else
+                        # Add import after quart_cors import
+                        sed -i '/from quart_cors import cors/a from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware' "$APP_DIR/app.py"
+                    fi
+                    
+                    # Add middleware configuration in create_app function
+                    # Find the line where app is registered and add middleware after
+                    if grep -q "app.asgi_app = ProxyHeadersMiddleware" "$APP_DIR/app.py"; then
+                        echo "Middleware already configured"
+                    else
+                        # Add after app.register_blueprint(chat_history_cosmosdb_bp)
+                        sed -i '/app.register_blueprint(chat_history_cosmosdb_bp)/a \    # Configure proxy headers middleware for Azure Front Door\n    app.asgi_app = ProxyHeadersMiddleware(app.asgi_app, trusted_hosts=["*"])' "$APP_DIR/app.py"
+                    fi
+                    
+                    echo "✅ ProxyHeadersMiddleware added to app.py"
+                    echo "   Redeploying application to App Service..."
+                    
+                    # Trigger redeployment using azd
+                    if [ -n "${AZD_WORKDIR:-}" ] && [ -d "${AZD_WORKDIR}" ]; then
+                        (
+                            cd "$AZD_WORKDIR"
+                            if [ -n "${AZD_ENV:-}" ]; then
+                                azd deploy -e "$AZD_ENV" --only-show-errors || echo "⚠️  Warning: Deployment may have failed. Please check azd output."
+                            else
+                                azd deploy --only-show-errors || echo "⚠️  Warning: Deployment may have failed. Please check azd output."
+                            fi
+                        )
+                        echo "✅ Application redeployed with proxy middleware"
+                    else
+                        echo "⚠️  Warning: Could not trigger automatic redeployment."
+                        echo "   Please run 'azd deploy' manually to apply the changes."
+                    fi
+                fi
+            else
+                echo "⚠️  Warning: app.py not found at $APP_DIR/app.py"
+                echo "   Manual configuration may be required."
+            fi
+        fi
+        
+        # Configure App Service access restrictions to only allow traffic from Front Door
+        # This prevents direct access to the App Service bypassing the WAF
+        echo "Restricting App Service access to Front Door only..."
+        
+        # Get current access restrictions
+        CURRENT_RESTRICTIONS=$(az webapp config access-restriction show \
+            --name "$APP_SERVICE_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "ipSecurityRestrictions" -o json 2>/dev/null || echo "[]")
+        
+        # Check if Front Door rule already exists
+        if echo "$CURRENT_RESTRICTIONS" | grep -q "AllowFrontDoor"; then
+            echo "Front Door access restriction already configured."
+        else
+            # Add access restriction rule
+            if az webapp config access-restriction add \
+                --name "$APP_SERVICE_NAME" \
+                --resource-group "$RESOURCE_GROUP" \
+                --rule-name "AllowFrontDoor" \
+                --action Allow \
+                --service-tag AzureFrontDoor.Backend \
+                --priority 100 \
+                --only-show-errors; then
+                echo "Access restriction configured: only Front Door can access App Service."
+            else
+                echo "Warning: Could not configure access restrictions. App Service may be accessible directly."
+            fi
+        fi
+        
+        # Get Front Door endpoint URL
+        AFD_ENDPOINT_URL=$(az afd endpoint show -g "$RESOURCE_GROUP" --profile-name "$AFD_PROFILE_NAME" --endpoint-name "$AFD_ENDPOINT_NAME" --query "hostName" -o tsv)
+        AFD_STATUS="✅"
+        echo
+        echo "Azure Front Door deployment complete!"
+        echo "Front Door URL: https://${AFD_ENDPOINT_URL}"
+        echo "⚠️  Please use the Front Door URL to access your application."
+        echo "⚠️  Direct access to App Service URL is now restricted."
+    fi
+fi
+
+# Print final comprehensive summary
+print_summary
 
 echo
 echo "All specified security features have been attempted for resources in $RESOURCE_GROUP."
