@@ -1,0 +1,269 @@
+# Variable definitions for CAIRA-based Terraform implementation
+
+variable "project_name" {
+  description = "Name of the project (used in resource naming)"
+  type        = string
+  default     = "ai-security-demo"
+  
+  validation {
+    condition     = can(regex("^[a-z0-9-]+$", var.project_name))
+    error_message = "Project name must contain only lowercase letters, numbers, and hyphens."
+  }
+}
+
+variable "environment" {
+  description = "Environment name (dev, staging, prod)"
+  type        = string
+  default     = "dev"
+  
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "Environment must be dev, staging, or prod."
+  }
+}
+
+variable "location" {
+  description = "Azure region for resources"
+  type        = string
+  default     = "eastus"
+}
+
+variable "tags" {
+  description = "Additional tags to apply to all resources"
+  type        = map(string)
+  default     = {}
+}
+
+# Log Analytics Configuration
+variable "log_retention_days" {
+  description = "Number of days to retain logs in Log Analytics"
+  type        = number
+  default     = 30
+  
+  validation {
+    condition     = var.log_retention_days >= 30 && var.log_retention_days <= 730
+    error_message = "Log retention must be between 30 and 730 days."
+  }
+}
+
+# Key Vault Configuration
+variable "key_vault_network_acls_default_action" {
+  description = "Default action for Key Vault network ACLs"
+  type        = string
+  default     = "Allow"  # Use "Deny" for production with private endpoints
+  
+  validation {
+    condition     = contains(["Allow", "Deny"], var.key_vault_network_acls_default_action)
+    error_message = "Key Vault network ACLs default action must be Allow or Deny."
+  }
+}
+
+# App Service Configuration
+variable "app_service_sku" {
+  description = "SKU for App Service Plan"
+  type        = string
+  default     = "B1"  # Basic tier for dev/test
+  
+  validation {
+    condition     = can(regex("^(B[1-3]|S[1-3]|P[1-3]v[2-3])$", var.app_service_sku))
+    error_message = "App Service SKU must be valid (e.g., B1, S1, P1v2)."
+  }
+}
+
+# Azure OpenAI Configuration
+variable "openai_deployments" {
+  description = "Azure OpenAI model deployments"
+  type = list(object({
+    name      = string
+    model     = string
+    version   = string
+    capacity  = number
+  }))
+  default = [
+    {
+      name     = "gpt-4"
+      model    = "gpt-4"
+      version  = "1106-Preview"
+      capacity = 10
+    },
+    {
+      name     = "gpt-35-turbo"
+      model    = "gpt-35-turbo"
+      version  = "0613"
+      capacity = 10
+    },
+    {
+      name     = "text-embedding-ada-002"
+      model    = "text-embedding-ada-002"
+      version  = "2"
+      capacity = 10
+    }
+  ]
+}
+
+# AI Search Configuration
+variable "ai_search_sku" {
+  description = "SKU for Azure AI Search"
+  type        = string
+  default     = "basic"
+  
+  validation {
+    condition     = contains(["free", "basic", "standard", "standard2", "standard3"], var.ai_search_sku)
+    error_message = "AI Search SKU must be free, basic, standard, standard2, or standard3."
+  }
+}
+
+# Microsoft Defender Configuration
+variable "enable_defender_for_ai" {
+  description = "Enable Microsoft Defender for AI"
+  type        = bool
+  default     = true
+}
+
+variable "enable_defender_for_storage" {
+  description = "Enable Microsoft Defender for Storage"
+  type        = bool
+  default     = true
+}
+
+variable "enable_defender_for_app_services" {
+  description = "Enable Microsoft Defender for App Services (subscription-wide)"
+  type        = bool
+  default     = true
+}
+
+variable "enable_defender_for_cosmos_db" {
+  description = "Enable Microsoft Defender for Cosmos DB (subscription-wide)"
+  type        = bool
+  default     = true
+}
+
+variable "defender_for_storage_malware_scanning" {
+  description = "Enable malware scanning in Defender for Storage"
+  type        = bool
+  default     = true
+}
+
+variable "defender_for_storage_sensitive_data_discovery" {
+  description = "Enable sensitive data discovery in Defender for Storage"
+  type        = bool
+  default     = true
+}
+
+# Front Door and WAF Configuration
+variable "enable_front_door" {
+  description = "Enable Azure Front Door with WAF"
+  type        = bool
+  default     = true
+}
+
+variable "front_door_sku" {
+  description = "SKU for Azure Front Door (Premium required for WAF)"
+  type        = string
+  default     = "Premium_AzureFrontDoor"
+  
+  validation {
+    condition     = contains(["Standard_AzureFrontDoor", "Premium_AzureFrontDoor"], var.front_door_sku)
+    error_message = "Front Door SKU must be Standard_AzureFrontDoor or Premium_AzureFrontDoor."
+  }
+}
+
+variable "waf_mode" {
+  description = "WAF policy mode (Detection or Prevention)"
+  type        = string
+  default     = "Prevention"
+  
+  validation {
+    condition     = contains(["Detection", "Prevention"], var.waf_mode)
+    error_message = "WAF mode must be Detection or Prevention."
+  }
+}
+
+variable "waf_enable_bot_manager" {
+  description = "Enable Bot Manager rule set in WAF"
+  type        = bool
+  default     = true
+}
+
+# Network Configuration
+variable "enable_private_endpoints" {
+  description = "Enable private endpoints for services (requires VNet)"
+  type        = bool
+  default     = false  # Set to true for production/private deployment
+}
+
+variable "vnet_address_space" {
+  description = "Address space for VNet (when using private endpoints)"
+  type        = list(string)
+  default     = ["10.0.0.0/16"]
+}
+
+variable "subnet_prefixes" {
+  description = "Subnet prefixes for different services"
+  type = object({
+    app_service      = string
+    private_endpoints = string
+    ai_services      = string
+  })
+  default = {
+    app_service       = "10.0.1.0/24"
+    private_endpoints = "10.0.2.0/24"
+    ai_services       = "10.0.3.0/24"
+  }
+}
+
+# Authentication Configuration
+variable "enable_authentication" {
+  description = "Enable Azure AD authentication for the application"
+  type        = bool
+  default     = true
+}
+
+variable "allowed_tenant_ids" {
+  description = "List of Azure AD tenant IDs allowed to authenticate"
+  type        = list(string)
+  default     = []  # Empty means use current tenant
+}
+
+# Chat History Configuration
+variable "enable_chat_history" {
+  description = "Enable chat history with Cosmos DB"
+  type        = bool
+  default     = true
+}
+
+variable "cosmos_db_consistency_level" {
+  description = "Consistency level for Cosmos DB"
+  type        = string
+  default     = "Session"
+  
+  validation {
+    condition     = contains(["Eventual", "Session", "BoundedStaleness", "Strong", "ConsistentPrefix"], var.cosmos_db_consistency_level)
+    error_message = "Invalid Cosmos DB consistency level."
+  }
+}
+
+# CAIRA Architecture Selection
+variable "caira_architecture" {
+  description = "CAIRA reference architecture to use (basic, standard, private)"
+  type        = string
+  default     = "basic"
+  
+  validation {
+    condition     = contains(["basic", "standard", "private"], var.caira_architecture)
+    error_message = "CAIRA architecture must be basic, standard, or private."
+  }
+}
+
+# Deployment Configuration
+variable "deploy_sample_data" {
+  description = "Deploy sample data and documents"
+  type        = bool
+  default     = true
+}
+
+variable "auto_scale_enabled" {
+  description = "Enable auto-scaling for App Service"
+  type        = bool
+  default     = false
+}

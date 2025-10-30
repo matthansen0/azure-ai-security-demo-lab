@@ -8,6 +8,9 @@
 > [!WARNING]  
 > This repo is still under development, and has not yet reached v1.0 release.
 
+> [!NOTE]  
+> 🔍 **CAIRA Assessment In Progress**: We're evaluating a redesign using [Microsoft CAIRA (Composable AI Reference Architecture)](https://github.com/microsoft/caira) to improve maintainability and reduce upstream dependencies. See [CAIRA_ASSESSMENT.md](./CAIRA_ASSESSMENT.md) for details.
+
 This repo provides automation to deploy AI Workloads on Azure using Azure OpenAI and supporting resources, and to enable key Azure Security configurations. This automation uses the fantastic work built by the [Azure Search OpenAI Demo](https://github.com/Azure-Samples/azure-search-openai-demo) samples repo and builds additional security components. We swap the frontend to use Azure App Service, and also enable the flags for conversation history, which requires Cosmos DB and Entra ID.
 
 After we deploy the *azure-search-openai-demo* environment, we run the automation to leverage some bolt-on, and some build-in security:
@@ -73,16 +76,26 @@ chmod +x *.sh; ./deploy-sample-and-secure.sh --env azure-ai-search-demo
 > 💡 If prompted for subscription-wide enablement (App Services or Cosmos DBs), you may accept to enable them now. This creates a local state file `.defender_state.env` so cleanup can revert the change later if desired.
 
 ## 📝 To-Do List
- 
-- [ ] Create a real architecture diagram that's not ASCII.
+
+### Architecture and Foundation
+- [x] Assess CAIRA (Composable AI Reference Architecture) for redesign - See [CAIRA_ASSESSMENT.md](./CAIRA_ASSESSMENT.md)
+- [ ] Implement CAIRA-based Terraform infrastructure
+- [ ] Create a real architecture diagram that's not ASCII
+- [ ] Migrate from bash scripts to Infrastructure as Code (Terraform)
+
+### Security Features
+- [x] Add Azure Front Door + WAF
 - [ ] Add APIM with [Defender for APIs](https://learn.microsoft.com/azure/defender-for-cloud/defender-for-apis-introduction)
 - [ ] Integrate [Data-Aware Threat Protection and Security Posture](https://learn.microsoft.com/azure/defender-for-cloud/concept-data-aware-security) features
-- [x] Add Azure Front Door + WAF
 - [ ] Build SQL data source and enable [Defender for SQL](https://learn.microsoft.com/azure/defender-for-cloud/defender-for-sql-introduction)
 - [ ] Deploy Microsoft Purview for Data Classification, and DLP
 - [ ] Integrate Azure AI Content Safety in [application code](https://learn.microsoft.com/azure/ai-services/content-safety/overview)
 - [ ] Add [Data and AI security dashboard](https://learn.microsoft.com/en-us/azure/defender-for-cloud/data-aware-security-dashboard-overview)
+
+### Documentation and Usability
 - [ ] Add user guides for walking through verifying each aspect of the solution's security measures
+- [ ] Create comprehensive Terraform deployment documentation
+- [ ] Build automated testing for infrastructure deployments
 
 ## 🧹 Cleanup / Deletion
 
@@ -100,9 +113,21 @@ What it does:
 
 ## 📖 Additional Resources
 
+### Architecture and Design
+- [CAIRA Assessment and Redesign Recommendation](./CAIRA_ASSESSMENT.md) - Evaluation of CAIRA for this project
+- [Migration Guide](./MIGRATION_GUIDE.md) - Understanding the current vs. CAIRA approach
 - [Azure OpenAI Landing Zone Reference Architecture](https://techcommunity.microsoft.com/blog/azurearchitectureblog/azure-openai-landing-zone-reference-architecture/3882102)
 - [Azure AI Adoption Framework](https://learn.microsoft.com/azure/cloud-adoption-framework/scenarios/ai/)
+
+### Security Resources
 - [Azure Security Collation](https://github.com/matthansen0/azure-security-collation)
+- [Microsoft Defender for Cloud Documentation](https://learn.microsoft.com/azure/defender-for-cloud/)
+- [Azure AI Security Best Practices](https://learn.microsoft.com/azure/ai-services/openai/concepts/security)
+
+### CAIRA and Infrastructure as Code
+- [Microsoft CAIRA Repository](https://github.com/microsoft/caira)
+- [Azure Verified Modules](https://aka.ms/avm)
+- [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
 
 ## 🤝 Contributing
 
