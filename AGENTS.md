@@ -108,6 +108,7 @@ State tracking is written locally under `.defender/` (ignored by git).
 | `.github/scripts/lab_rot_watch.py` | Weekly high-signal checks for lab/validator parity and confirmed broken links |
 | `scripts/preflight-check.sh` | Regional Search and exact OpenAI model/SKU/quota validation |
 | `scripts/prepdocs-search-only.py` | Policy-aware Search ingestion fallback when Blob public access is disabled |
+| `docs/responsible-ai.md` | Responsible AI control, evidence, and production-gap mapping |
 | `agents/it-admin/app.py` | IT Admin Agent FastAPI application |
 | `agents/it-admin/tools/__init__.py` | Agent tools + mock data |
 | `docs/labs/lab-7-defender-for-ai.md` | Lab guide for Defender for AI enablement |

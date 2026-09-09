@@ -20,6 +20,8 @@
 > **📖 Want to understand what you deployed?** Read [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for a detailed walkthrough of every component, why we chose these configurations, and what you should know before going to production.
 >
 > **🧪 Ready to explore hands-on?** Check out the [Lab Guides](docs/labs/README.md) for step-by-step exercises verifying each security layer — WAF, AI Gateway, RBAC, monitoring, Defender, and agent security.
+>
+> **Responsible AI:** Review the [Responsible AI mapping](docs/responsible-ai.md) for implemented controls, verification evidence, and production gaps across Microsoft's six Responsible AI principles.
 
 ## ✨ Overview
 
@@ -346,6 +348,7 @@ The `--purge` flag triggers a `postdown` hook that automatically purges the envi
 
 ## 📖 Additional Resources
 
+- [Responsible AI mapping for this sandbox](docs/responsible-ai.md)
 - [Azure OpenAI Landing Zone Reference Architecture](https://techcommunity.microsoft.com/blog/azurearchitectureblog/azure-openai-landing-zone-reference-architecture/3882102)
 - [Azure AI Adoption Framework](https://learn.microsoft.com/azure/cloud-adoption-framework/scenarios/ai/)
 - [Microsoft Defender for Cloud](https://learn.microsoft.com/azure/defender-for-cloud/)
