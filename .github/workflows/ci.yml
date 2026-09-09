@@ -54,8 +54,17 @@ jobs:
       - name: Compile Bicep
         run: |
           az bicep install --version v0.46.1
+          set +e
           az bicep build --file infra/main.bicep \
             --outfile "$RUNNER_TEMP/main.json" \
             2>"$RUNNER_TEMP/bicep.log"
-          cat "$RUNNER_TEMP/bicep.log"
-          test ! -s "$RUNNER_TEMP/bicep.log"
+          BICEP_EXIT=$?
+          set -e
+          # Drop the CLI's own "new release available" self-update notice; it is
+          # unrelated to template correctness and would otherwise cause this
+          # warning-free check to fail whenever a newer Bicep CLI ships.
+          grep -v "A new Bicep release is available" "$RUNNER_TEMP/bicep.log" \
+            > "$RUNNER_TEMP/bicep.filtered.log" || true
+          cat "$RUNNER_TEMP/bicep.filtered.log"
+          test "$BICEP_EXIT" -eq 0
+          test ! -s "$RUNNER_TEMP/bicep.filtered.log"
