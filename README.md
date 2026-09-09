@@ -37,6 +37,7 @@ A self-contained Azure AI security demonstration platform featuring a RAG (Retri
 |-----------|------------|-------------|
 | **Front Door + WAF** | Edge Security | OWASP managed rules, bot protection, DDoS mitigation |
 | **API Management** | AI Gateway | Centralized AI endpoint management with managed identity auth + retry logic (optional rate limiting / token usage logging) |
+| **Foundry Guardrails** | Content Safety | Explicit blocking policy for harmful content and direct/indirect prompt attacks |
 | **Defender for AI** | AI Threat Detection | Tracked enhancement (not enabled by default): https://github.com/matthansen0/azure-ai-security-sandbox/issues/14 |
 | **Defender for APIs** | API Protection | Optional Defender for Cloud plan (enabled via add-on script) |
 | **Defender for Containers** | Container Threat Detection | Optional Defender for Cloud plan (enabled via add-on script) |
@@ -321,7 +322,7 @@ https://<your-frontdoor-endpoint>.azurefd.net
 - [x] APIM + Defender for APIs validation (end-to-end)
 - [x] Real architecture diagrams (not ASCII)
 - [ ] SQL data source + Defender for SQL
-- [ ] Azure AI Content Safety integration
+- [x] Microsoft Foundry guardrails and Content Safety validation
 
 ### v3.0 (Future)
 - [ ] Microsoft Purview for DLP

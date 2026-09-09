@@ -276,8 +276,12 @@ This is why our `postdown` hook purges soft-deleted resources.
 |-----------|---------|--------------|
 | `capacity` (GPT-4o) | `10` | 10K tokens per minute |
 | `capacity` (embeddings) | `50` | 50K tokens per minute |
-| `raiPolicyName` | `Microsoft.DefaultV2` | Content filtering policy |
+| `raiPolicyName` | `sandbox-content-safety` | Blocking Foundry guardrail policy derived from `Microsoft.DefaultV2` |
 | `publicNetworkAccess` | `Enabled` | Public endpoints (for demo) |
+
+The chat deployment uses an explicit policy for harmful-content categories, direct prompt attacks (`Jailbreak`), and indirect document attacks (`Indirect Attack`). These controls are integrated into Azure OpenAI and surfaced under **Guardrails + controls** in Microsoft Foundry; a separate Content Safety resource is not required for deployment-level filtering.
+
+The indirect-attack filter requires Microsoft's document embedding and formatting convention. The upstream RAG prompt does not currently use that convention, so the configured filter is not an end-to-end guarantee for retrieved documents. See [Lab 8](docs/labs/lab-8-foundry-guardrails.md) for the boundary and verification steps.
 
 ### Tradeoffs & Alternatives
 

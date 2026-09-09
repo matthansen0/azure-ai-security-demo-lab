@@ -443,6 +443,37 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Lab 8 — Foundry Guardrails + Content Safety
+# ---------------------------------------------------------------------------
+header "Lab 8: Foundry Guardrails + Content Safety"
+
+OPENAI_ACCOUNT=$(az resource list -g "$RG" \
+  --resource-type Microsoft.CognitiveServices/accounts \
+  --query "[?kind == 'OpenAI'].name | [0]" -o tsv 2>/dev/null || true)
+if [[ -n "$OPENAI_ACCOUNT" ]]; then
+  CONTENT_SAFETY_URI="https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$OPENAI_ACCOUNT/raiPolicies/sandbox-content-safety?api-version=2024-04-01-preview"
+  CONTENT_SAFETY_POLICY=$(az rest --method get --uri "$CONTENT_SAFETY_URI" -o json 2>/dev/null || true)
+
+  INDIRECT_ATTACK=$(jq -r '[.properties.contentFilters[]? | select(.name == "Indirect Attack" and .source == "Prompt" and .enabled == true and .blocking == true)] | length' <<<"$CONTENT_SAFETY_POLICY" 2>/dev/null || echo 0)
+  if [[ "$INDIRECT_ATTACK" -ge 1 ]]; then
+    pass "L8: Content safety policy enables blocking for indirect prompt attacks"
+  else
+    fail "L8: Content safety policy missing blocking Indirect Attack prompt filter"
+  fi
+
+  DEPLOYMENT_POLICY=$(az rest --method get \
+    --uri "https://management.azure.com/subscriptions/$SUB/resourceGroups/$RG/providers/Microsoft.CognitiveServices/accounts/$OPENAI_ACCOUNT/deployments/gpt-4o?api-version=2024-04-01-preview" \
+    --query 'properties.raiPolicyName' -o tsv 2>/dev/null || true)
+  if [[ "$DEPLOYMENT_POLICY" == "sandbox-content-safety" ]]; then
+    pass "L8: gpt-4o deployment uses sandbox-content-safety policy"
+  else
+    fail "L8: gpt-4o deployment policy is ${DEPLOYMENT_POLICY:-missing} (expected sandbox-content-safety)"
+  fi
+else
+  fail "L8: Azure OpenAI account not found"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 echo ""

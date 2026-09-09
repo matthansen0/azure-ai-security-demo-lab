@@ -203,3 +203,7 @@ The script rolls back all plans that were changed by `enable-defender.sh` (track
 ## Previous Lab
 
 Return to [Lab 6: AI Agent Security](lab-6-ai-agent-security.md).
+
+## Next Lab
+
+Continue to [Lab 8: Foundry Guardrails and Content Safety](lab-8-foundry-guardrails.md) to verify the controls that filter and block model traffic.

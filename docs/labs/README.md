@@ -42,13 +42,14 @@ RG="rg-${AZURE_ENV_NAME}"
 | [Lab 5](lab-5-defender-for-cloud.md) | Defender for Cloud | ~20 min | Base deployment + add-on script |
 | [Lab 6](lab-6-ai-agent-security.md) | AI Agent Security | ~20 min | `useAgents=true` |
 | [Lab 7](lab-7-defender-for-ai.md) | Defender for AI | ~25 min | Base deployment + add-on script |
+| [Lab 8](lab-8-foundry-guardrails.md) | Foundry Guardrails and Content Safety | ~15 min | Base deployment |
 
 ## Recommended Order
 
 The labs are designed to be completed in order, following the request flow through the architecture:
 
 ```
-Lab 1 (Edge) → Lab 2 (Gateway) → Lab 3 (Identity) → Lab 4 (Observability) → Lab 5 (Defender) → Lab 6 (Agents) → Lab 7 (AI Threats)
+Lab 1 (Edge) → Lab 2 (Gateway) → Lab 3 (Identity) → Lab 4 (Observability) → Lab 5 (Defender) → Lab 6 (Agents) → Lab 7 (AI Threats) → Lab 8 (Guardrails)
 ```
 
 However, each lab is self-contained and can be completed independently.

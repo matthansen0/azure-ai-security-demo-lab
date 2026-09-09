@@ -31,6 +31,88 @@ resource openAiAccount 'Microsoft.CognitiveServices/accounts@2024-04-01-preview'
   }
 }
 
+var contentSafetyPolicyName = 'sandbox-content-safety'
+
+// Explicit Foundry guardrails for harmful content and direct/indirect prompt attacks.
+resource contentSafetyPolicy 'Microsoft.CognitiveServices/accounts/raiPolicies@2024-04-01-preview' = {
+  parent: openAiAccount
+  name: contentSafetyPolicyName
+  properties: {
+    basePolicyName: 'Microsoft.DefaultV2'
+    mode: 'Blocking'
+    contentFilters: [
+      {
+        name: 'Hate'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'Hate'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'Selfharm'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'Selfharm'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'Sexual'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'Sexual'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'Violence'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'Violence'
+        allowedContentLevel: 'Medium'
+        blocking: true
+        enabled: true
+        source: 'Completion'
+      }
+      {
+        name: 'Jailbreak'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+      {
+        name: 'Indirect Attack'
+        blocking: true
+        enabled: true
+        source: 'Prompt'
+      }
+    ]
+  }
+}
+
 // GPT-4o deployment for chat
 resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-04-01-preview' = {
   parent: openAiAccount
@@ -45,7 +127,7 @@ resource chatDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-0
       name: 'gpt-4o'
       version: '2024-11-20'
     }
-    raiPolicyName: 'Microsoft.DefaultV2'
+    raiPolicyName: contentSafetyPolicy.name
   }
 }
 

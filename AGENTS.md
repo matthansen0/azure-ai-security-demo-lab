@@ -156,6 +156,7 @@ The script tests each lab's core claims and prints `PASS / FAIL / SKIP` for each
 | **Lab 5** | Defender for APIs + Defender for Storage at Standard tier; search index populated (758 docs); backend RAG returns citations |
 | **Lab 6** | Agent `/health` healthy, 7 tools registered, `/chat` invokes tools and returns investigation response, `delete_resource` not directly exposed (read-only safety), project-based Foundry account + Project deployed |
 | **Lab 7** | Defender for AI at Standard tier, AIPromptEvidence extension enabled |
+| **Lab 8** | Explicit Foundry guardrail policy enables blocking for indirect prompt attacks and is bound to the `gpt-4o` deployment |
 
 SKIP is shown for checks that require Defender enablement (`scripts/enable-defender.sh`) or optional features not deployed (e.g., agents when `useAgents=false`).
 
