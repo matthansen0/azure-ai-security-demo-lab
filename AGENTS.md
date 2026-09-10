@@ -106,6 +106,7 @@ State tracking is written locally under `.defender/` (ignored by git).
 | `infra/modules/front-door.bicep` | WAF rules and mode configuration |
 | `infra/modules/agents/ai-foundry.bicep` | Project-based AI Foundry account + Project for agents |
 | `.github/workflows/ci.yml` | Pull-request gate for Bicep, shell, preflight, and agent tests |
+| `.github/workflows/pages.yml` | Publishes the interactive Archify diagram to GitHub Pages |
 | `.github/scripts/lab_rot_watch.py` | Weekly high-signal checks for lab/validator parity and confirmed broken links |
 | `scripts/preflight-check.sh` | Regional Search and exact OpenAI model/SKU/quota validation |
 | `scripts/prepdocs-search-only.py` | Policy-aware Search ingestion fallback when Blob public access is disabled |
