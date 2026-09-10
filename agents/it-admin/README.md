@@ -29,24 +29,10 @@ The IT Admin Agent demonstrates:
 
 ## Deployment
 
-### Enable Agent Infrastructure
-
-Deploy with agents enabled:
-
-```bash
-azd up --parameter useAgents=true
-```
-
-This will provision:
+`azd up` provisions:
 - Project-based AI Foundry account and Project
 - Agent API Container App
 - Required role assignments
-
-### Deploy Without Agents (Default)
-
-```bash
-azd up  # useAgents defaults to false
-```
 
 ## API Reference
 

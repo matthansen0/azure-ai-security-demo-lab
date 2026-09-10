@@ -4,7 +4,7 @@
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="header" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dff0ff;strokeColor=#d8e6fb;strokeWidth=1;arcSize=12;verticalAlign=middle;align=left;spacingLeft=20;" value="&lt;b style=&quot;font-size:22px;color:#183b67&quot;&gt;Azure AI Security Sandbox&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#47617d&quot;&gt;Security-focused Azure OpenAI RAG platform with optional AI Foundry-powered IT Admin agent&lt;/span&gt;" vertex="1">
+        <mxCell id="header" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dff0ff;strokeColor=#d8e6fb;strokeWidth=1;arcSize=12;verticalAlign=middle;align=left;spacingLeft=20;" value="&lt;b style=&quot;font-size:22px;color:#183b67&quot;&gt;Azure AI Security Sandbox&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:12px;color:#47617d&quot;&gt;Security-focused Azure OpenAI RAG platform with AI Foundry-powered IT Admin agent&lt;/span&gt;" vertex="1">
           <mxGeometry height="74" width="740" x="30" y="20" as="geometry" />
         </mxCell>
         <mxCell id="pill1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d8e2f0;strokeWidth=1;fontSize=11;fontStyle=1;fontColor=#23486f;arcSize=50;" value="WAF at edge" vertex="1">
@@ -100,7 +100,7 @@
         <mxCell id="e_search_storage" edge="1" parent="1" source="aisearch" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jetSize=auto;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=#8393ab;strokeWidth=1.8;dashed=1;dashPattern=7 5;fontSize=10;fontStyle=1;fontColor=#495871;labelBackgroundColor=#f5f7fb;" target="storage" value="prepdocs data">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="zone_agent" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9ef;strokeColor=#dbc8a3;strokeWidth=2;dashed=1;dashPattern=10 8;arcSize=8;verticalAlign=top;align=left;spacingLeft=26;spacingTop=6;" value="&lt;b style=&quot;font-size:14px;color:#1f3c63&quot;&gt;Optional Agent Path&lt;/b&gt;  &lt;span style=&quot;font-size:11px;color:#58718e&quot;&gt;Deployed with useAgents=true&lt;/span&gt;" vertex="1">
+        <mxCell id="zone_agent" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9ef;strokeColor=#dbc8a3;strokeWidth=2;dashed=1;dashPattern=10 8;arcSize=8;verticalAlign=top;align=left;spacingLeft=26;spacingTop=6;" value="&lt;b style=&quot;font-size:14px;color:#1f3c63&quot;&gt;IT Admin Agent Path&lt;/b&gt;  &lt;span style=&quot;font-size:11px;color:#58718e&quot;&gt;Always deployed&lt;/span&gt;" vertex="1">
           <mxGeometry height="220" width="860" x="30" y="550" as="geometry" />
         </mxCell>
         <mxCell id="agentapi" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fffdf8;strokeColor=#d9c29a;strokeWidth=1.5;arcSize=14;dashed=1;dashPattern=8 6;verticalAlign=middle;fontSize=12;fontColor=#16395f;fontStyle=1;image=official-azure-icons/worker-container-app.svg;imageWidth=28;imageHeight=28;imageAlign=left;spacingLeft=36;" value="&lt;b&gt;IT Admin Agent API&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:10px;color:#536a84&quot;&gt;FastAPI agent container&lt;br&gt;shares Container Apps env&lt;/span&gt;" vertex="1">

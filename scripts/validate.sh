@@ -3,7 +3,7 @@
 # validate.sh — End-to-end functional validation for azure-ai-security-sandbox
 #
 # Tests every major component and lab-guide claim automatically against a
-# deployed environment. Run this after `azd up` (with or without agents).
+# deployed environment. Run this after `azd up`.
 #
 # Usage:
 #   bash scripts/validate.sh                   # uses current azd env
@@ -95,7 +95,7 @@ if [[ -n "$SEARCH_SERVICE" ]]; then
 fi
 
 echo "Backend: $BACKEND_FQDN"
-echo "Agent:   ${AGENT_FQDN:-<not deployed>}"
+echo "Agent:   ${AGENT_FQDN:-<missing required output>}"
 echo "AFD:     $FD_URL"
 echo "APIM:    $APIM_URL"
 
@@ -139,7 +139,7 @@ except: print(0)
     fail "L1: No RAG citations in Front Door response"
   fi
 else
-  skip "L1: FRONTDOOR_URL not set — Front Door not deployed or not accessible"
+  fail "L1: FRONTDOOR_URL not set — required Front Door deployment is missing"
 fi
 
 # ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ if [[ -n "$APIM_URL" && -n "$APIM_KEY" ]]; then
     fail "L2: APIM without key → HTTP $HTTP_APIM_NO (expected 401)"
   fi
 else
-  skip "L2: APIM not configured — skipping APIM checks"
+  fail "L2: APIM not configured — required API Management deployment is missing"
 fi
 
 # ---------------------------------------------------------------------------
@@ -212,7 +212,7 @@ else
   fail "L3: No Search role found for backend identity"
 fi
 
-# 3d. APIM identity distinct from backend identity (when APIM enabled)
+# 3d. APIM identity distinct from backend identity
 if [[ -n "$APIM_NAME" ]]; then
   APIM_IDENTITY=$(az apim show -g "$RG" -n "$APIM_NAME" \
     --query 'identity.principalId' -o tsv 2>/dev/null || true)
@@ -410,7 +410,7 @@ except: print('false', 0)
     fail "L6: No project-based AI Foundry account/project found"
   fi
 else
-  skip "L6: Agent container app not found — deploy with: azd up --parameter useAgents=true"
+  fail "L6: Agent container app not found"
 fi
 
 # ---------------------------------------------------------------------------
@@ -488,7 +488,7 @@ if [[ "$FAIL" -gt 0 ]]; then
   echo "Common fixes:"
   echo "  - Empty search index:    cd upstream && ./scripts/prepdocs.sh"
   echo "  - APIM not configured:   azd provision"
-  echo "  - Agents not deployed:   azd up --parameter useAgents=true"
+  echo "  - Agent unavailable:     azd provision && azd deploy"
   echo "  - Defender not enabled:  bash scripts/enable-defender.sh"
   exit 1
 fi

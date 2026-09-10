@@ -17,7 +17,7 @@ param containerAppsEnvId string
 param containerRegistryLoginServer string
 
 @description('Container image name (set by azd deploy)')
-param imageName string
+param imageName string = ''
 
 @description('Application Insights connection string')
 param applicationInsightsConnectionString string
@@ -37,7 +37,7 @@ param logAnalyticsWorkspaceId string
 @description('Container Registry name for ACR pull role assignment')
 param containerRegistryName string
 
-// Container image - uses parameter if provided, otherwise placeholder
+// Container image - use placeholder during initial provision, real image after azd deploy
 var containerImage = !empty(imageName) ? imageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
 // AcrPull role definition ID

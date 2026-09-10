@@ -6,8 +6,6 @@ Hands-on exercises for exploring and verifying the security controls in the Azur
 
 These labs assume the sandbox is **already deployed** with `azd up`. If you haven't deployed yet, see the [Quick Start](../../README.md#-quick-start) in the main README.
 
-> **Lab 6 (AI Agent Security)** requires the optional agent infrastructure. If you need it, redeploy with `azd up --parameter useAgents=true`.
-
 ### Find Your Resources
 
 1. Open the [Azure Portal](https://portal.azure.com)
@@ -35,12 +33,12 @@ RG="rg-${AZURE_ENV_NAME}"
 
 | Lab | Topic | Time | Requires |
 |-----|-------|------|----------|
-| [Lab 1](lab-1-waf-front-door.md) | WAF & Front Door | ~20 min | `useAFD=true` (default) |
-| [Lab 2](lab-2-api-management-gateway.md) | API Management AI Gateway | ~25 min | `useAPIM=true` (default) |
+| [Lab 1](lab-1-waf-front-door.md) | WAF & Front Door | ~20 min | Base deployment |
+| [Lab 2](lab-2-api-management-gateway.md) | API Management AI Gateway | ~25 min | Base deployment |
 | [Lab 3](lab-3-managed-identity-rbac.md) | Managed Identity & RBAC | ~20 min | Base deployment |
 | [Lab 4](lab-4-monitoring-logging.md) | Monitoring & Log Analytics | ~30 min | Base deployment |
 | [Lab 5](lab-5-defender-for-cloud.md) | Defender for Cloud | ~20 min | Base deployment + add-on script |
-| [Lab 6](lab-6-ai-agent-security.md) | AI Agent Security | ~20 min | `useAgents=true` |
+| [Lab 6](lab-6-ai-agent-security.md) | AI Agent Security | ~20 min | Base deployment |
 | [Lab 7](lab-7-defender-for-ai.md) | Defender for AI | ~25 min | Base deployment + add-on script |
 | [Lab 8](lab-8-foundry-guardrails.md) | Foundry Guardrails and Content Safety | ~15 min | Base deployment |
 

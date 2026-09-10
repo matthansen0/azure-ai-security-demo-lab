@@ -4,7 +4,7 @@
 
 **Time:** ~20 minutes
 
-**Requires:** `useAFD=true` (default)
+**Requires:** Base deployment
 
 ---
 

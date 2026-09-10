@@ -4,7 +4,7 @@
 
 **Time:** ~25 minutes
 
-**Requires:** `useAPIM=true` (default)
+**Requires:** Base deployment
 
 ---
 

@@ -94,7 +94,7 @@ One of the key security features is that no API keys exist in environment variab
    - `AZURE_OPENAI_ENDPOINT` — The endpoint URL (not a secret)
    - `AZURE_OPENAI_CHAT_DEPLOYMENT` — Model deployment name (not a secret)
    - **No** `AZURE_OPENAI_API_KEY` — the app uses managed identity instead
-   - If APIM is enabled: `OPENAI_HOST=azure_custom` and an APIM subscription key (for app → APIM auth only, stored as a secret reference)
+  - `OPENAI_HOST=azure_custom` and an APIM subscription key (for app → APIM auth only, stored as a secret reference)
 
 **Key takeaway:** The app authenticates to Azure OpenAI, AI Search, Storage, and Cosmos DB using `DefaultAzureCredential` (managed identity) — no API keys anywhere.
 

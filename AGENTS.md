@@ -62,7 +62,7 @@ User → Azure Front Door (WAF) → Azure API Management (AI Gateway) → Contai
 - `tests/test_api.py` - API/unit regression tests for health, tools, chat, and safety endpoints
 - `tests/test_tools.py` - Unit/regression tests for tool definitions, mock resources, and tool handlers
 - `tests/conftest.py` - Shared pytest fixtures for agent API/tool tests
-- **Deploy with:** `azd up --parameter useAgents=true`
+- Deployed by default with `azd up`
 
 
 ### Optional Defender Add-on
@@ -118,9 +118,7 @@ State tracking is written locally under `.defender/` (ignored by git).
 
 ### Deploy the Solution
 ```bash
-azd up                           # Full deployment (no agents)
-azd up --parameter useAPIM=false  # Skip APIM for faster iteration
-azd up --parameter useAgents=true # Deploy with IT Admin Agent
+azd up  # Full lab deployment with AFD, APIM, and the IT Admin Agent
 ```
 
 
@@ -159,7 +157,7 @@ The script tests each lab's core claims and prints `PASS / FAIL / SKIP` for each
 | **Lab 7** | Defender for AI at Standard tier, AIPromptEvidence extension enabled |
 | **Lab 8** | Explicit Foundry guardrail policy enables blocking for indirect prompt attacks and is bound to the `gpt-4o` deployment |
 
-SKIP is shown for checks that require Defender enablement (`scripts/enable-defender.sh`) or optional features not deployed (e.g., agents when `useAgents=false`).
+SKIP is shown for checks that require Defender enablement (`scripts/enable-defender.sh`).
 
 **When to run this:**
 - After `azd up` to confirm a fresh environment is healthy
@@ -224,6 +222,8 @@ curl -s -X POST "$(azd env get-value FRONTDOOR_URL)/chat" \
 azd down --force --purge  # Purges APIM, Azure OpenAI, and the Foundry account
 ```
 
+The preprovision hook also runs `scripts/recover-soft-deleted.sh`. It handles exact resource names from the current azd environment: it enables OpenAI restore, purges the underlying Foundry AML workspace when it is not active, and purges only the matching Foundry and APIM soft-deleted resources. It never performs subscription-wide purges.
+
 > **Note:** `azd down` can sometimes be flaky. If resources aren't deleted, use:
 > ```bash
 > az group delete -n rg-<env-name> --yes --no-wait
@@ -250,10 +250,8 @@ Set via `azd env set <KEY> <VALUE>`:
 | `AZURE_ENV_NAME` | (required) | Environment name prefix |
 | `AZURE_PRINCIPAL_ID` | (auto) | Deploying user's Object ID (set by azd) |
 | `AZURE_PRINCIPAL_TYPE` | `User` | `User` for interactive, `ServicePrincipal` for CI/CD |
-| `USE_APIM` | `true` | Enable AI Gateway |
 | `APIM_SKU` | `BasicV2` | APIM SKU (BasicV2, StandardV2) |
 | `WAF_MODE` | `Detection` | WAF mode (Detection, Prevention) |
-| `USE_AGENTS` | `false` | Deploy IT Admin Agent + AI Foundry infrastructure |
 | `SKIP_PREFLIGHT` | `false` | Set to `true` to bypass Search and exact model/SKU/quota preflight checks |
 
 ### Validated regions
@@ -283,7 +281,7 @@ The core deployment creates role assignments for two principals:
 1. **Backend Container App managed identity** - Runtime access (OpenAI, Search, Storage, Cosmos)
 2. **Deploying user** - Prepdocs access (uploads blobs, creates search indexes)
 
-When `useAgents=true`, it also assigns least-privilege roles to:
+It also assigns least-privilege roles to:
 3. **Agent API Container App managed identity** - OpenAI, Search read, and Storage access
 4. **Foundry account managed identity** - Connected OpenAI, Search, and Foundry access
 5. **Foundry Project managed identity** - Connected OpenAI, Search read, and Foundry developer access
@@ -335,7 +333,7 @@ When adding new security features:
 | APIM soft-delete conflict | `az apim deletedservice purge --location <loc> --service-name <name>` |
 | Cognitive Services conflict | `az cognitiveservices account purge --location <loc> --name <name> -g <rg>` |
 | Container not starting | Check ACR image exists, check Container Apps logs |
-| `openai.AuthenticationError` | APIM enabled but `OPENAI_HOST` not set to `azure_custom` - redeploy with latest `container-apps.bicep` |
+| `openai.AuthenticationError` | `OPENAI_HOST` not set to `azure_custom` - redeploy with latest `container-apps.bicep` |
 | `openai.NotFoundError` | See "APIM + OpenAI SDK Integration" section below |
 | APIM `internal-client-key` not found | Ensure `openAiApiPolicy` has `dependsOn: [internalClientKeyNamedValue]` |
 
@@ -403,7 +401,7 @@ Bicep's implicit dependency resolution doesn't work here because the policy XML 
 
 ## APIM + OpenAI SDK Integration (Critical!)
 
-> **✅ FIXED (Jan 2026):** The Container App now correctly sets `OPENAI_HOST=azure_custom` and `AZURE_OPENAI_CUSTOM_URL` when APIM is enabled. The app uses `AsyncAzureOpenAI` client which constructs Azure-style URLs (`/deployments/{name}/chat/completions`), so APIM routes correctly without needing URL rewrite policies.
+> **✅ FIXED (Jan 2026):** The Container App now correctly sets `OPENAI_HOST=azure_custom` and `AZURE_OPENAI_CUSTOM_URL`. The app uses `AsyncAzureOpenAI` client which constructs Azure-style URLs (`/deployments/{name}/chat/completions`), so APIM routes correctly without needing URL rewrite policies.
 >
 > **⚠️ STILL PENDING:** If you want to support generic OpenAI SDK clients that send `/chat/completions` (without deployment in path), you'd need to add an APIM operation with URL rewrite policy. This is NOT required for the current implementation.
 
@@ -430,7 +428,7 @@ POST {endpoint}/openai/deployments/{deployment}/chat/completions?api-version=202
 
 ### Container App Environment Variables for APIM
 
-When `useAPIM=true`, `container-apps.bicep` **automatically configures** these env vars:
+`container-apps.bicep` **automatically configures** these APIM env vars:
 
 | Variable | Value | Purpose |
 |----------|-------|---------|
@@ -516,12 +514,16 @@ Container App                    APIM                         Azure OpenAI
 
 | Error | Cause | Fix |
 |-------|-------|-----|
-| `AuthenticationError` | `OPENAI_HOST` not set to `azure_custom` when APIM enabled | Run `azd provision` to update Container App with correct env vars |
+| `AuthenticationError` | `OPENAI_HOST` not set to `azure_custom` | Run `azd provision` to update Container App with correct env vars |
 | `NotFoundError` from OpenAI SDK | URL path wrong or APIM can't route | Check `AZURE_OPENAI_CUSTOM_URL` is set correctly |
 | `DeploymentNotFound` | Wrong deployment name | Check `AZURE_OPENAI_CHAT_DEPLOYMENT` matches actual deployment |
 | 401 Unauthorized | APIM managed identity missing role | Add "Cognitive Services OpenAI User" role to APIM identity |
 | 404 from APIM | No matching operation/route | Verify APIM has `openai` API with correct backend |
 | `"Using Azure credential"` in logs | `AZURE_OPENAI_API_KEY_OVERRIDE` empty/missing | Check secret reference in Container App |
+
+## azd Container App Image Gotcha
+
+During `azd up`, `azd` can populate `SERVICE_BACKEND_IMAGE_NAME` and `SERVICE_AGENT_IMAGE_NAME` before remote builds have pushed those tags to ACR. Do not feed those values into Bicep provisioning; otherwise Container Apps can fail with `MANIFEST_UNKNOWN` for an `azd-deploy-*` tag, including after a partially failed app resource flips `SERVICE_BACKEND_RESOURCE_EXISTS=true`. Provision should use the public placeholder image, then `azd deploy` updates the real images.
 
 ## Related Documentation
 

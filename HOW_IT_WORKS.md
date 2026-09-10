@@ -17,7 +17,7 @@ You deployed a bunch of Azure resources with `azd up`. Here's what they do, why 
 - [Layer 6: The Memory (Cosmos DB)](#layer-6-the-memory-cosmos-db)
 - [Layer 7: Identity & Access (Managed Identity + RBAC)](#layer-7-identity--access-managed-identity--rbac)
 - [Layer 8: Observability (Logging & Monitoring)](#layer-8-observability-logging--monitoring)
-- [Layer 9: AI Agents (Optional)](#layer-9-ai-agents-optional)
+- [Layer 9: AI Agents](#layer-9-ai-agents)
 - [Putting It All Together](#putting-it-all-together)
 
 ---
@@ -73,13 +73,11 @@ param wafMode string = 'Detection'  // Change to 'Prevention' for production
 
 ### Tradeoffs & Alternatives
 
-**Why not just use Container Apps' built-in ingress?** You could! Set `useAFD=false` and skip this layer entirely. You lose:
+**Why not just use Container Apps' built-in ingress?** You could in a different architecture, but this lab always includes Front Door because the WAF layer is one of the controls under test. Without it, you lose:
 - Global edge caching (latency)
 - WAF protection (security)
 - DDoS protection (availability)
 - Custom domains with managed certs (convenience)
-
-For development, skipping AFD saves ~$45/mo and 10-15 minutes deploy time.
 
 **Why not Azure Application Gateway?** App Gateway is regional, Front Door is global. For AI apps with users worldwide, Front Door's edge presence matters. If you're single-region and need more advanced WAF tuning, App Gateway is worth considering.
 
@@ -156,7 +154,7 @@ These are powerful, but APIM policy expressions can be finicky: a policy express
 
 **Why not use Azure AI Gateway (preview)?** Great question! Azure has a native AI Gateway feature in preview. It's simpler but less flexible. APIM gives you full policy control - you can add semantic caching, prompt logging, content filtering, etc.
 
-**Skip APIM entirely?** Set `useAPIM=false`. Your app talks directly to Azure OpenAI. Faster deploys, lower cost, less control.
+**Skip APIM entirely?** Not in this lab. APIM is the AI Gateway control under test, so the application always routes Azure OpenAI traffic through APIM.
 
 ### 🎓 Learn More
 
@@ -204,7 +202,7 @@ var resolvedOpenAiEndpoint = openAiEndpoint
 var apimOpenAiBaseUrlV1 = useApimGateway ? '${apimOpenAiEndpoint}/v1' : ''
 ```
 
-If APIM is deployed, the upstream app uses `OPENAI_HOST=azure_custom` + `AZURE_OPENAI_CUSTOM_URL=https://.../openai/v1` as the OpenAI SDK `base_url`, while still keeping `AZURE_OPENAI_ENDPOINT` pointed at the real Azure OpenAI resource. If APIM is not deployed, the app talks directly to Azure OpenAI.
+The upstream app uses `OPENAI_HOST=azure_custom` + `AZURE_OPENAI_CUSTOM_URL=https://.../openai/v1` as the OpenAI SDK `base_url`, while still keeping `AZURE_OPENAI_ENDPOINT` pointed at the real Azure OpenAI resource.
 
 ### Key Settings You Should Know
 
@@ -564,13 +562,13 @@ This isn't optional for security. You need logs for:
 
 ---
 
-## Layer 9: AI Agents (Optional)
+## Layer 9: AI Agents
 
 **Files:** [infra/modules/agents/](infra/modules/agents/), [agents/it-admin/](agents/it-admin/)
 
 ### What We Deployed
 
-When you run `azd up --parameter useAgents=true`, you get:
+When you run `azd up`, you get:
 
 - **AI Foundry account + Project** - Project-based management plane for AI agents
 - **IT Admin Agent Container App** - FastAPI application with GPT-4o tool-calling agent
@@ -620,7 +618,6 @@ Currently uses **mock data** for safety - no real infrastructure access. In prod
 
 | Parameter | Default | What It Does |
 |-----------|---------|--------------|
-| `useAgents` | `false` | Deploy agent infrastructure |
 | `minReplicas` | `1` | Agent always-on (no cold start) |
 | `maxReplicas` | `3` | Max scale-out |
 | `targetPort` | `8000` | FastAPI listen port |
@@ -671,9 +668,9 @@ For a single agent, direct OpenAI access works fine. AI Foundry pays off when yo
 
 **Everything is logged.** You can trace this entire flow in Log Analytics.
 
-### Optional: The Agent Flow
+### The Agent Flow
 
-If you deployed with `useAgents=true`, there's a separate flow for the IT Admin Agent:
+There is a separate flow for the IT Admin Agent:
 
 1. **User** sends POST to agent endpoint: "Why is the web app slow?"
 2. **Agent Container App** receives request
@@ -690,9 +687,8 @@ The agent runs independently from the RAG app - different Container App, differe
 1. **Run `azd up`** and deploy this yourself
 2. **Query Log Analytics** - find your first request's journey
 3. **Change WAF to Prevention mode** and see what breaks
-4. **Disable APIM** (`useAPIM=false`) and compare the architecture
-5. **Add a document** and query it
-6. **Check costs** in Azure Cost Management after a few days
+4. **Add a document** and query it
+5. **Check costs** in Azure Cost Management after a few days
 
 ### Taking This to Production
 

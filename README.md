@@ -46,7 +46,7 @@ A self-contained Azure AI security demonstration platform featuring a RAG (Retri
 | **Defender for Storage** | Data Protection | Optional (enabled via add-on script): malware scanning on upload, sensitive data discovery (PII/PCI/PHI) |
 | **Container Apps** | Serverless Containers | Auto-scaling, managed environment, no infrastructure to manage |
 | **Defender for Cosmos DB** | Database Security | Optional Defender for Cloud plan (enabled via add-on script) |
-| **AI Foundry + Agents** | Agent Security | Optional IT Admin Agent with project-based AI Foundry, managed identity auth, and RBAC-controlled access (set `useAgents=true` to deploy) |
+| **AI Foundry + Agents** | Agent Security | IT Admin Agent with project-based AI Foundry, managed identity auth, and RBAC-controlled access |
 | **Managed Identities** | Zero Secrets | No keys in code—all services authenticate via Azure AD |
 
 ### 🚪 API Management as AI Gateway
@@ -90,7 +90,7 @@ That's it! `azd up` will:
 1. Prompt you for an environment name and Azure region
 2. Provision all infrastructure via Bicep
 3. Clone azure-search-openai-demo from GitHub, build the image in ACR, and deploy to Container Apps
-4. Configure Front Door routing if `useAFD` is true
+4. Configure Front Door routing
 5. Output the application URL
 
 > **⏱️ Deployment Time:** Full deployment takes **30-50 minutes** depending on configuration:
@@ -102,34 +102,6 @@ That's it! `azd up` will:
 > | APIM (Developer) | ~20-40 minutes |
 > | Front Door + WAF | ~10-15 minutes |
 > | AFD WAF propagation | ~30-45 minutes |
->
-> **Fastest iteration:** Use `--parameter useAFD=false --parameter useAPIM=false` to deploy in ~5 minutes.
-
-To skip Front Door for faster iteration, disable it during provisioning:
-
-```bash
-azd up --parameter useAFD=false
-```
-
-To skip API Management (APIM AI Gateway) for faster iteration:
-
-```bash
-azd up --parameter useAPIM=false
-```
-
-Or disable both for the fastest development cycle:
-
-```bash
-azd up --parameter useAFD=false --parameter useAPIM=false
-```
-
-To deploy with the optional **IT Admin Agent** (adds a project-based AI Foundry account + Project and agent Container App):
-
-```bash
-azd up --parameter useAgents=true
-```
-
-When Front Door is disabled, `APP_PUBLIC_URL` points directly to the Container App FQDN.
 
 ### Tests and Validation
 
@@ -153,7 +125,7 @@ Agent test files:
 - `agents/it-admin/tests/test_tools.py` — unit/regression coverage for tool schemas, mock resource data, tool handlers, edge cases, and agentic scenarios
 - `agents/it-admin/tests/conftest.py` — shared pytest fixtures
 
-After deployment, run `bash scripts/validate.sh` for end-to-end regression validation across the labs, including the optional project-based AI Foundry account + Project checks when `useAgents=true`.
+After deployment, run `bash scripts/validate.sh` for end-to-end regression validation across the labs, including the project-based AI Foundry account + Project checks.
 
 The postprovision hook stages the upstream sample data outside the read-only submodule before indexing. If an Azure Policy disables the Storage public endpoint, [scripts/prepdocs-search-only.py](scripts/prepdocs-search-only.py) preserves upstream parsing, embeddings, and Search ingestion while omitting Blob page uploads.
 
@@ -176,17 +148,6 @@ azd up --location japaneast
 ```
 
 The preprovision hook verifies Azure AI Search quota plus the exact `gpt-4o` and `text-embedding-3-small` model versions, Standard SKU availability, and TPM capacity before resources are created.
-
-Other useful parameters:
-
-```bash
-# Disable Azure Front Door (use Container Apps URL directly)
-azd up --parameter useAFD=false
-
-# Disable Azure API Management (AI Gateway)
-azd up --parameter useAPIM=false
-```
-
 
 ### Optional: Enable Defender Plans (Add-on)
 
@@ -240,7 +201,8 @@ To restore the resource, you must specify 'restore' to be 'true' in the property
 
 **Fix:** Redeploy with the restore flag:
 ```bash
-azd up --parameter restoreSoftDeletedOpenAi=true
+azd env set restoreSoftDeletedOpenAi true
+azd up
 ```
 
 Or purge the soft-deleted resource first:
@@ -263,6 +225,16 @@ azd up
 
 #### Subscription-Level Deployment Conflicts
 
+#### Container App Image Manifest Not Found
+
+On `azd up`, `azd` may set `SERVICE_BACKEND_IMAGE_NAME` and `SERVICE_AGENT_IMAGE_NAME` before the remote build has pushed those tags to Azure Container Registry. If Container Apps tries to use that tag during provisioning, you may see:
+
+```text
+MANIFEST_UNKNOWN: manifest tagged by "azd-deploy-..." is not found
+```
+
+The Bicep modules intentionally do not read `SERVICE_BACKEND_IMAGE_NAME` or `SERVICE_AGENT_IMAGE_NAME` during provisioning. Provisioning uses a public placeholder image; after ACR exists and the remote build completes, `azd deploy` pushes and updates the real images.
+
 ### What Gets Deployed
 
 1. **Resource Group** with all resources
@@ -272,11 +244,11 @@ azd up
 5. **Azure Storage** for document blobs
 6. **Azure Cosmos DB** for chat history
 7. **Azure Container Apps** running the RAG application (cloned from upstream and built in ACR at deploy time)
-8. **Azure API Management** as AI Gateway for managed identity auth + retry logic (optional rate limiting/token tracking) (set `useAPIM=false` to skip)
-9. **Azure Front Door + WAF** for edge protection (WAF defaults to Detection mode, set `useAFD=false` to skip)
+8. **Azure API Management** as AI Gateway for managed identity auth + retry logic (optional rate limiting/token tracking)
+9. **Azure Front Door + WAF** for edge protection (WAF defaults to Detection mode)
 10. **Microsoft Defender for Cloud** is not enabled in the core deployment; enable plans and per-resource Defender settings via the add-on script
-11. *(Optional)* **IT Admin Agent** - AI-powered troubleshooting agent with tool calling (set `useAgents=true`)
-12. *(Optional)* **Azure AI Foundry** account + Project for agent management (deployed with agents)
+11. **IT Admin Agent** - AI-powered troubleshooting agent with tool calling
+12. **Azure AI Foundry** account + Project for agent management
 
 ### 💰 Cost Estimation
 
@@ -284,15 +256,13 @@ Estimated costs for running the sandbox (low/dev usage). Actual costs vary based
 
 | Configuration | Daily | Monthly |
 |--------------|-------|---------|
-| **Full deployment** (BasicV2 APIM + AFD) | ~$11-12 | ~$320-350 |
-| **Full + Agents** (adds AI Foundry + agent) | ~$12-14 | ~$370-420 |
-| **No APIM, No AFD** (fastest iteration) | ~$3-4 | ~$95-120 |
+| **Full lab deployment** (BasicV2 APIM + AFD + Agents) | ~$12-14 | ~$370-420 |
 
 **Cost breakdown by resource:**
 
 | Resource | Monthly Cost | Notes |
 |----------|-------------|-------|
-| API Management (BasicV2) | ~$180 | Use `useAPIM=false` to skip |
+| API Management (BasicV2) | ~$180 | AI Gateway |
 | Front Door Premium + WAF | ~$45 | Base + WAF policy |
 | AI Search (Basic) | ~$75 | Fixed tier cost |
 | Azure OpenAI | ~$5-20 | Pay per token (GPT-4o + embeddings) |
@@ -301,12 +271,10 @@ Estimated costs for running the sandbox (low/dev usage). Actual costs vary based
 | Container Registry (Basic) | ~$5 | Image storage |
 | Storage Account | ~$1-2 | Blob storage for docs |
 | Log Analytics + App Insights | ~$5-10 | Pay per GB ingested |
-| AI Foundry account + Project | ~$0-5 | Optional (`useAgents=true`); management plane |
-| Agent Container App | ~$5-10 | Optional (`useAgents=true`); consumption-based |
+| AI Foundry account + Project | ~$0-5 | Agent management plane |
+| Agent Container App | ~$5-10 | Consumption-based |
 
 > **💡 Cost-saving tips:**
-> - Use `--parameter useAFD=false` to skip Front Door during development (~$45/mo savings)
-> - Use `--parameter useAPIM=false` to skip APIM for local testing (~$180/mo savings)
 > - Remember to `azd down --force --purge` when not using the environment
 
 ### Access the Application

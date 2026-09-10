@@ -2081,7 +2081,7 @@
       "y": 555,
       "width": 417.86773681640625,
       "height": 28,
-      "text": "Optional Agent Path (useAgents=true)",
+      "text": "IT Admin Agent Path (always deployed)",
       "fontSize": 22,
       "fontFamily": 1,
       "strokeColor": "#b45309",
@@ -2107,7 +2107,7 @@
       "textAlign": "left",
       "verticalAlign": "top",
       "containerId": null,
-      "originalText": "Optional Agent Path (useAgents=true)",
+      "originalText": "IT Admin Agent Path (always deployed)",
       "autoResize": true,
       "lineHeight": 1.2727272727272727
     },

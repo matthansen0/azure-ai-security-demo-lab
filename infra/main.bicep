@@ -20,12 +20,6 @@ param tags object = {}
 @description('Set to true to restore a soft-deleted OpenAI resource with the same name')
 param restoreSoftDeletedOpenAi bool = false
 
-@description('Deploy Azure Front Door with WAF (set to false for faster iterations during development)')
-param useAFD bool = true
-
-@description('Deploy Azure API Management as AI Gateway (set to false for faster iterations during development)')
-param useAPIM bool = true
-
 @description('API Management SKU')
 @allowed(['BasicV2', 'StandardV2'])
 param apimSku string = 'BasicV2'
@@ -33,21 +27,12 @@ param apimSku string = 'BasicV2'
 @description('Container Registry name (optional - auto-generated if not provided)')
 param containerRegistryName string = ''
 
-@description('Backend service container image name (set by azd deploy)')
-param backendImageName string = ''
-
 @description('Id of the user or app running the deployment (used for prepdocs RBAC)')
 param principalId string = ''
 
 @description('Type of principal (User for interactive deployments, ServicePrincipal for CI/CD)')
 @allowed(['User', 'ServicePrincipal'])
 param principalType string = 'User'
-
-@description('Deploy IT Admin Agent with AI Foundry (set to false to skip agent infrastructure)')
-param useAgents bool = false
-
-@description('Agent API container image name (set by azd deploy)')
-param agentImageName string = ''
 
 // Generate unique suffix for globally unique resource names
 var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
@@ -123,9 +108,9 @@ module aiServices 'modules/ai-services.bicep' = {
   }
 }
 
-// Azure API Management - AI Gateway (optional - can be disabled for faster dev iterations)
+// Azure API Management - AI Gateway
 // Deployed BEFORE Container Apps so the gateway URL can be passed to the app
-module apiManagement 'modules/api-management.bicep' = if (useAPIM) {
+module apiManagement 'modules/api-management.bicep' = {
   name: 'apiManagement'
   scope: rg
   params: {
@@ -141,11 +126,11 @@ module apiManagement 'modules/api-management.bicep' = if (useAPIM) {
 }
 
 // Role assignment for APIM managed identity to access Azure OpenAI
-module apimRoleAssignments 'modules/role-assignments.bicep' = if (useAPIM) {
+module apimRoleAssignments 'modules/role-assignments.bicep' = {
   name: 'apimRoleAssignments'
   scope: rg
   params: {
-    principalId: apiManagement.?outputs.apimIdentityPrincipalId ?? ''
+    principalId: apiManagement.outputs.apimIdentityPrincipalId
     openAiAccountName: aiServices.outputs.openAiAccountName
     searchServiceName: aiServices.outputs.searchServiceName
     storageAccountName: storage.outputs.storageAccountName
@@ -154,7 +139,7 @@ module apimRoleAssignments 'modules/role-assignments.bicep' = if (useAPIM) {
 }
 
 // Container Apps - Main RAG application
-// Note: When APIM is enabled, this module depends on APIM to route OpenAI traffic through the AI Gateway
+// APIM routes OpenAI traffic through the AI Gateway.
 module containerApps 'modules/container-apps.bicep' = {
   name: 'containerApps'
   scope: rg
@@ -165,7 +150,6 @@ module containerApps 'modules/container-apps.bicep' = {
     containerAppName: '${abbrs.appContainerApps}${resourceToken}'
     containerRegistryName: containerRegistry.outputs.name
     containerRegistryLoginServer: containerRegistry.outputs.loginServer
-    imageName: backendImageName
     resourceGroupName: rg.name
     azureSubscriptionId: subscription().subscriptionId
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
@@ -182,10 +166,9 @@ module containerApps 'modules/container-apps.bicep' = {
     cosmosDbEndpoint: cosmosDb.outputs.cosmosDbEndpoint
     cosmosDbDatabaseName: cosmosDb.outputs.databaseName
     cosmosDbContainerName: cosmosDb.outputs.containerName
-    // AI Gateway routing: When APIM is enabled, route all OpenAI traffic through APIM
-    // Best practice: All Azure OpenAI access goes through APIM for rate limiting, token tracking, and observability
-    apimOpenAiEndpoint: useAPIM ? '${apiManagement.?outputs.apimGatewayUrl ?? ''}/${apiManagement.?outputs.openAiApiPath ?? ''}' : ''
-    apimSubscriptionKey: apiManagement.?outputs.internalSubscriptionKey ?? ''
+    // AI Gateway routing: All Azure OpenAI access goes through APIM for rate limiting, token tracking, and observability.
+    apimOpenAiEndpoint: '${apiManagement.outputs.apimGatewayUrl}/${apiManagement.outputs.openAiApiPath}'
+    apimSubscriptionKey: apiManagement.outputs.internalSubscriptionKey
   }
 }
 
@@ -217,8 +200,8 @@ module deployingUserRoleAssignments 'modules/role-assignments.bicep' = if (!empt
   }
 }
 
-// Front Door with WAF (optional - can be disabled for faster dev iterations)
-module frontDoor 'modules/front-door.bicep' = if (useAFD) {
+// Front Door with WAF
+module frontDoor 'modules/front-door.bicep' = {
   name: 'frontDoor'
   scope: rg
   params: {
@@ -231,10 +214,10 @@ module frontDoor 'modules/front-door.bicep' = if (useAFD) {
   }
 }
 
-// ============ IT Admin Agent Infrastructure (optional) ============
+// ============ IT Admin Agent Infrastructure ============
 
 // AI Foundry account and project for Agent Service
-module aiFoundry 'modules/agents/ai-foundry.bicep' = if (useAgents) {
+module aiFoundry 'modules/agents/ai-foundry.bicep' = {
   name: 'aiFoundry'
   scope: rg
   params: {
@@ -251,7 +234,7 @@ module aiFoundry 'modules/agents/ai-foundry.bicep' = if (useAgents) {
 }
 
 // Agent API Container App
-module agentApi 'modules/agents/agent-api.bicep' = if (useAgents) {
+module agentApi 'modules/agents/agent-api.bicep' = {
   name: 'agentApi'
   scope: rg
   params: {
@@ -261,23 +244,22 @@ module agentApi 'modules/agents/agent-api.bicep' = if (useAgents) {
     containerAppsEnvId: containerApps.outputs.containerAppsEnvironmentId
     containerRegistryLoginServer: containerRegistry.outputs.loginServer
     containerRegistryName: containerRegistry.outputs.name
-    imageName: agentImageName
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
     openAiEndpoint: aiServices.outputs.openAiEndpoint
     openAiDeploymentName: aiServices.outputs.chatDeploymentName
-    projectEndpoint: aiFoundry.?outputs.projectEndpoint ?? ''
+    projectEndpoint: aiFoundry.outputs.projectEndpoint
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
   }
 }
 
 // Role assignments for Agent infrastructure
-module agentRoleAssignments 'modules/agents/agent-role-assignments.bicep' = if (useAgents) {
+module agentRoleAssignments 'modules/agents/agent-role-assignments.bicep' = {
   name: 'agentRoleAssignments'
   scope: rg
   params: {
-    foundryAccountPrincipalId: aiFoundry.?outputs.accountPrincipalId ?? ''
-    projectPrincipalId: aiFoundry.?outputs.projectPrincipalId ?? ''
-    agentApiPrincipalId: agentApi.?outputs.identityPrincipalId ?? ''
+    foundryAccountPrincipalId: aiFoundry.outputs.accountPrincipalId
+    projectPrincipalId: aiFoundry.outputs.projectPrincipalId
+    agentApiPrincipalId: agentApi.outputs.identityPrincipalId
     openAiAccountName: aiServices.outputs.openAiAccountName
     searchServiceName: aiServices.outputs.searchServiceName
     storageAccountName: storage.outputs.storageAccountName
@@ -301,16 +283,15 @@ output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.logi
 output CONTAINER_APP_NAME string = containerApps.outputs.containerAppName
 output CONTAINER_APP_FQDN string = containerApps.outputs.containerAppFqdn
 output APP_INTERNAL_URL string = 'https://${containerApps.outputs.containerAppFqdn}'
-output SERVICE_BACKEND_IMAGE_NAME string = containerApps.outputs.imageName
 
-// Primary public URL (Front Door if enabled, otherwise Container App direct)
-output APP_PUBLIC_URL string = useAFD ? 'https://${frontDoor.?outputs.frontDoorEndpointHostName ?? ''}' : 'https://${containerApps.outputs.containerAppFqdn}'
+// Primary public URL (Front Door)
+output APP_PUBLIC_URL string = 'https://${frontDoor.outputs.frontDoorEndpointHostName}'
 
-// Front Door outputs (only when AFD is enabled)
-output FRONTDOOR_ENDPOINT string = frontDoor.?outputs.frontDoorEndpointHostName ?? ''
-output FRONTDOOR_URL string = useAFD ? 'https://${frontDoor.?outputs.frontDoorEndpointHostName ?? ''}' : ''
-output FRONTDOOR_PROFILE_NAME string = frontDoor.?outputs.frontDoorProfileName ?? ''
-output FRONTDOOR_ENDPOINT_NAME string = frontDoor.?outputs.frontDoorEndpointName ?? ''
+// Front Door outputs
+output FRONTDOOR_ENDPOINT string = frontDoor.outputs.frontDoorEndpointHostName
+output FRONTDOOR_URL string = 'https://${frontDoor.outputs.frontDoorEndpointHostName}'
+output FRONTDOOR_PROFILE_NAME string = frontDoor.outputs.frontDoorProfileName
+output FRONTDOOR_ENDPOINT_NAME string = frontDoor.outputs.frontDoorEndpointName
 
 // AI Services outputs
 output AZURE_OPENAI_ENDPOINT string = aiServices.outputs.openAiEndpoint
@@ -327,20 +308,19 @@ output AZURE_STORAGE_BLOB_ENDPOINT string = storage.outputs.blobEndpoint
 // Cosmos DB outputs
 output AZURE_COSMOSDB_ENDPOINT string = cosmosDb.outputs.cosmosDbEndpoint
 
-// API Management outputs (only when APIM is enabled)
-output APIM_GATEWAY_URL string = apiManagement.?outputs.apimGatewayUrl ?? ''
-output APIM_SERVICE_NAME string = apiManagement.?outputs.apimServiceName ?? ''
-output AZURE_OPENAI_VIA_APIM string = useAPIM ? '${apiManagement.?outputs.apimGatewayUrl ?? ''}/${apiManagement.?outputs.openAiApiPath ?? ''}' : ''
+// API Management outputs
+output APIM_GATEWAY_URL string = apiManagement.outputs.apimGatewayUrl
+output APIM_SERVICE_NAME string = apiManagement.outputs.apimServiceName
+output AZURE_OPENAI_VIA_APIM string = '${apiManagement.outputs.apimGatewayUrl}/${apiManagement.outputs.openAiApiPath}'
 
 // AI Gateway routing status - indicates if Container App routes through APIM
-output AI_GATEWAY_ENABLED bool = useAPIM
+output AI_GATEWAY_ENABLED bool = true
 output CONTAINER_APP_OPENAI_ENDPOINT string = containerApps.outputs.configuredOpenAiEndpoint
 
-// Agent outputs (only when agents are enabled)
-output AGENT_ENABLED bool = useAgents
-output AGENT_API_URL string = agentApi.?outputs.agentApiUrl ?? ''
-output AGENT_API_NAME string = agentApi.?outputs.containerAppName ?? ''
-output AI_FOUNDRY_ACCOUNT_NAME string = aiFoundry.?outputs.accountName ?? ''
-output AI_FOUNDRY_PROJECT_NAME string = aiFoundry.?outputs.projectName ?? ''
-output AI_FOUNDRY_PROJECT_ENDPOINT string = aiFoundry.?outputs.projectEndpoint ?? ''
-output SERVICE_AGENT_IMAGE_NAME string = agentApi.?outputs.imageName ?? ''
+// Agent outputs
+output AGENT_ENABLED bool = true
+output AGENT_API_URL string = agentApi.outputs.agentApiUrl
+output AGENT_API_NAME string = agentApi.outputs.containerAppName
+output AI_FOUNDRY_ACCOUNT_NAME string = aiFoundry.outputs.accountName
+output AI_FOUNDRY_PROJECT_NAME string = aiFoundry.outputs.projectName
+output AI_FOUNDRY_PROJECT_ENDPOINT string = aiFoundry.outputs.projectEndpoint

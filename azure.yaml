@@ -20,7 +20,7 @@ services:
     docker:
       remoteBuild: true
   
-  # IT Admin Agent API (only deployed when useAgents=true)
+  # IT Admin Agent API
   agent:
     project: ./agents/it-admin
     language: py
@@ -34,6 +34,11 @@ hooks:
   preprovision:
     shell: sh
     run: |
+      # Recover only exact soft-deleted resources from this azd environment.
+      if [ -x ./scripts/recover-soft-deleted.sh ]; then
+        ./scripts/recover-soft-deleted.sh || exit 1
+      fi
+
       # Regional capacity / quota preflight (skippable via SKIP_PREFLIGHT=true)
       if [ "${SKIP_PREFLIGHT:-false}" != "true" ]; then
         if [ -x ./scripts/preflight-check.sh ]; then
@@ -77,31 +82,26 @@ hooks:
   postprovision:
     shell: sh
     run: |
-      if [ -n "$FRONTDOOR_PROFILE_NAME" ] && [ "$FRONTDOOR_PROFILE_NAME" != "" ]; then
-        echo "Ensuring Front Door endpoint and route are enabled..."
-        az afd endpoint update \
-          --resource-group $RESOURCE_GROUP_NAME \
-          --profile-name $FRONTDOOR_PROFILE_NAME \
-          --name $FRONTDOOR_ENDPOINT_NAME \
-          --enabled-state Enabled \
-          --output none 2>/dev/null || true
+      echo "Ensuring Front Door endpoint and route are enabled..."
+      az afd endpoint update \
+        --resource-group $RESOURCE_GROUP_NAME \
+        --profile-name $FRONTDOOR_PROFILE_NAME \
+        --name $FRONTDOOR_ENDPOINT_NAME \
+        --enabled-state Enabled \
+        --output none 2>/dev/null || true
 
-        az afd route update \
-          --resource-group $RESOURCE_GROUP_NAME \
-          --profile-name $FRONTDOOR_PROFILE_NAME \
-          --endpoint-name $FRONTDOOR_ENDPOINT_NAME \
-          --name default-route \
-          --origin-group containerapp-origin-group \
-          --patterns-to-match "/*" \
-          --forwarding-protocol HttpsOnly \
-          --https-redirect Enabled \
-          --supported-protocols Http Https \
-          --enabled-state Enabled \
-          --output none 2>/dev/null || true
-      else
-        echo "Front Door is disabled (USE_AFD=false). Skipping AFD configuration."
-        echo "App is accessible directly at: $APP_PUBLIC_URL"
-      fi
+      az afd route update \
+        --resource-group $RESOURCE_GROUP_NAME \
+        --profile-name $FRONTDOOR_PROFILE_NAME \
+        --endpoint-name $FRONTDOOR_ENDPOINT_NAME \
+        --name default-route \
+        --origin-group containerapp-origin-group \
+        --patterns-to-match "/*" \
+        --forwarding-protocol HttpsOnly \
+        --https-redirect Enabled \
+        --supported-protocols Http Https \
+        --enabled-state Enabled \
+        --output none 2>/dev/null || true
       
       # Run prepdocs from upstream submodule to populate search index
       echo "Running prepdocs to populate search index..."
@@ -216,6 +216,16 @@ hooks:
         done
       else
         echo "No soft-deleted Cognitive Services found."
+      fi
+
+      # Purge the exact Azure ML workspace used by the Foundry account. Foundry
+      # workspace soft-delete is separate from Cognitive Services soft-delete.
+      if [ -n "$EXPECTED_FOUNDRY_NAME" ] && [ -n "$EXPECTED_RESOURCE_GROUP" ]; then
+        AML_WORKSPACE_ID="/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${EXPECTED_RESOURCE_GROUP}/providers/Microsoft.MachineLearningServices/workspaces/${EXPECTED_FOUNDRY_NAME}"
+        echo "Purging Foundry workspace if soft-deleted: $EXPECTED_FOUNDRY_NAME"
+        az rest --method delete \
+          --uri "https://management.azure.com${AML_WORKSPACE_ID}?api-version=2024-04-01&forceToPurge=true" \
+          --output none 2>/dev/null || true
       fi
       
       # Purge soft-deleted API Management services

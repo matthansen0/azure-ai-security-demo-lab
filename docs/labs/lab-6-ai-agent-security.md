@@ -4,7 +4,7 @@
 
 **Time:** ~20 minutes
 
-**Requires:** The optional agent infrastructure (`useAgents=true` — see [prerequisites](README.md#prerequisites))
+**Requires:** Base deployment
 
 ---
 

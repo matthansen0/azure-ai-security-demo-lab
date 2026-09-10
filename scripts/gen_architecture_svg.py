@@ -127,10 +127,10 @@ svg_parts.append(text(960, 310, "docs + citations", 14))
 svg_parts.append(arrow(820, 440, 1080, 440, "#757575", "8,4", "arrowhead-gray"))
 svg_parts.append(text(950, 430, "prepdocs", 14, "#757575"))
 
-# === Zone 3: Optional Agent Path ===
+# === Zone 3: IT Admin Agent Path ===
 svg_parts.append(rect(20, 550, 720, 210, "#fff3bf", "#f59e0b", 2, 0.3, "10,6"))
-svg_parts.append(text(55, 575, "Optional Agent Path", 20, "#b45309", "start", "bold"))
-svg_parts.append(text(330, 575, "(useAgents=true)", 16, "#b45309", "start"))
+svg_parts.append(text(55, 575, "IT Admin Agent Path", 20, "#b45309", "start", "bold"))
+svg_parts.append(text(330, 575, "(always deployed)", 16, "#b45309", "start"))
 
 agent_boxes = [
     (40, 615, 200, 80, "#fff3bf", "#f59e0b", ["IT Admin Agent", "(FastAPI)"], True),
@@ -182,7 +182,7 @@ svg_parts.append(arrow(340, 790, 390, 790, "#757575", "8,4", "arrowhead-gray"))
 svg_parts.append(text(465, 795, "Deploy / infra", 16, "#757575"))
 
 svg_parts.append(arrow(610, 790, 660, 790, "#f59e0b", "8,4", "arrowhead-amber"))
-svg_parts.append(text(735, 795, "Optional path", 16, "#f59e0b"))
+svg_parts.append(text(735, 795, "Agent path", 16, "#f59e0b"))
 
 svg_parts.append("</svg>")
 
