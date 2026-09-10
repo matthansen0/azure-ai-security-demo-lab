@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-10 -10 1560 840" width="1560" height="840" font-family="Segoe UI, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#1e1e1e"/>
+    </marker>
+    <marker id="arrowhead-gray" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#757575"/>
+    </marker>
+    <marker id="arrowhead-amber" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f59e0b"/>
+    </marker>
+  </defs>
+  <rect x="-10" y="-10" width="1560" height="840" fill="white"/>
+
+  <text x="390" y="30" font-size="28" fill="#1e1e1e" text-anchor="start" font-weight="bold">Azure AI Security Sandbox</text>
+  <text x="390" y="55" font-size="16" fill="#757575" text-anchor="start" font-weight="normal">Security-focused Azure OpenAI RAG architecture</text>
+  <rect x="830" y="8" width="150" height="38" fill="#ffc9c9" stroke="#ef4444" stroke-width="1" rx="19" opacity="1"/>
+  <text x="905.0" y="32" font-size="16" fill="#1e1e1e" text-anchor="middle" font-weight="normal">WAF at edge</text>
+  <rect x="995" y="8" width="210" height="38" fill="#b2f2bb" stroke="#22c55e" stroke-width="1" rx="19" opacity="1"/>
+  <text x="1100.0" y="32" font-size="16" fill="#1e1e1e" text-anchor="middle" font-weight="normal">Managed Identity</text>
+  <rect x="1220" y="8" width="100" height="38" fill="#d0bfff" stroke="#8b5cf6" stroke-width="1" rx="19" opacity="1"/>
+  <text x="1270.0" y="32" font-size="16" fill="#1e1e1e" text-anchor="middle" font-weight="normal">RBAC</text>
+  <rect x="1335" y="8" width="160" height="38" fill="#eebefa" stroke="#ec4899" stroke-width="1" rx="19" opacity="1"/>
+  <text x="1415.0" y="32" font-size="16" fill="#1e1e1e" text-anchor="middle" font-weight="normal">Observability</text>
+  <rect x="20" y="80" width="1480" height="240" fill="#dbe4ff" stroke="#4a9eed" stroke-width="2" rx="12" opacity="0.3"/>
+  <text x="55" y="105" font-size="20" fill="#2563eb" text-anchor="start" font-weight="bold">Main Runtime Flow</text>
+  <rect x="40" y="150" width="160" height="80" fill="#a5d8ff" stroke="#4a9eed" stroke-width="2" rx="12" opacity="1"/>
+  <text x="120.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">User</text>
+  <text x="120.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(Chat UI)</text>
+  <rect x="270" y="140" width="180" height="100" fill="#ffc9c9" stroke="#ef4444" stroke-width="2" rx="12" opacity="1"/>
+  <text x="360.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Front Door</text>
+  <text x="360.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">+ WAF</text>
+  <rect x="520" y="140" width="180" height="100" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2" rx="12" opacity="1"/>
+  <text x="610.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">RAG App</text>
+  <text x="610.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(Container Apps)</text>
+  <rect x="770" y="150" width="180" height="80" fill="#ffd8a8" stroke="#f59e0b" stroke-width="2" rx="12" opacity="1"/>
+  <text x="860.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">API Management</text>
+  <text x="860.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(AI Gateway)</text>
+  <rect x="1020" y="150" width="180" height="80" fill="#a5d8ff" stroke="#4a9eed" stroke-width="2" rx="12" opacity="1"/>
+  <text x="1110.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Azure OpenAI</text>
+  <text x="1110.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(GPT-4o)</text>
+  <rect x="1270" y="150" width="170" height="80" fill="#c3fae8" stroke="#22c55e" stroke-width="2" rx="12" opacity="1"/>
+  <text x="1355.0" y="178.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Cosmos DB</text>
+  <text x="1355.0" y="202.0" font-size="15" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(chat history)</text>
+  <line x1="200" y1="190" x2="270" y2="190" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="235.0" y="178.0" font-size="14" fill="#1e1e1e" text-anchor="middle">HTTPS</text>
+  <line x1="450" y1="190" x2="520" y2="190" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="485.0" y="178.0" font-size="14" fill="#1e1e1e" text-anchor="middle">origin</text>
+  <line x1="700" y1="190" x2="770" y2="190" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="735.0" y="178.0" font-size="14" fill="#1e1e1e" text-anchor="middle">SDK</text>
+  <line x1="950" y1="190" x2="1020" y2="190" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="985.0" y="178.0" font-size="14" fill="#1e1e1e" text-anchor="middle">managed ID</text>
+  <polyline points="610,140 610,110 1355,110 1355,150" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="980" y="102" font-size="14" fill="#1e1e1e" text-anchor="middle" font-weight="normal">chat history</text>
+  <rect x="20" y="340" width="1480" height="190" fill="#d3f9d8" stroke="#22c55e" stroke-width="2" rx="12" opacity="0.3"/>
+  <text x="55" y="365" font-size="20" fill="#15803d" text-anchor="start" font-weight="bold">Data & Infrastructure</text>
+  <rect x="180" y="400" width="210" height="80" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2" rx="12" opacity="1"/>
+  <text x="285.0" y="447.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Container Registry</text>
+  <rect x="620" y="400" width="200" height="80" fill="#a5d8ff" stroke="#4a9eed" stroke-width="2" rx="12" opacity="1"/>
+  <text x="720.0" y="447.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">AI Search</text>
+  <rect x="1080" y="400" width="200" height="80" fill="#c3fae8" stroke="#22c55e" stroke-width="2" rx="12" opacity="1"/>
+  <text x="1180.0" y="447.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Azure Storage</text>
+  <polyline points="560,240 560,370 285,400" stroke="#757575" stroke-width="2" fill="none" marker-end="url(#arrowhead-gray)" stroke-dasharray="8,4"/>
+  <text x="400" y="360" font-size="14" fill="#757575" text-anchor="middle" font-weight="normal">image pull</text>
+  <polyline points="620,240 720,400" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="650" y="325" font-size="14" fill="#1e1e1e" text-anchor="middle" font-weight="normal">retrieval</text>
+  <polyline points="680,240 1180,400" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="960" y="310" font-size="14" fill="#1e1e1e" text-anchor="middle" font-weight="normal">docs + citations</text>
+  <line x1="820" y1="440" x2="1080" y2="440" stroke="#757575" stroke-width="2" fill="none" marker-end="url(#arrowhead-gray)" stroke-dasharray="8,4"/>
+  <text x="950" y="430" font-size="14" fill="#757575" text-anchor="middle" font-weight="normal">prepdocs</text>
+  <rect x="20" y="550" width="720" height="210" fill="#fff3bf" stroke="#f59e0b" stroke-width="2" rx="12" opacity="0.3" stroke-dasharray="10,6"/>
+  <text x="55" y="575" font-size="20" fill="#b45309" text-anchor="start" font-weight="bold">IT Admin Agent Path</text>
+  <text x="330" y="575" font-size="16" fill="#b45309" text-anchor="start" font-weight="normal">(always deployed)</text>
+  <rect x="40" y="615" width="200" height="80" fill="#fff3bf" stroke="#f59e0b" stroke-width="2" rx="12" opacity="1" stroke-dasharray="8,4"/>
+  <text x="140.0" y="648.0" font-size="17" fill="#1e1e1e" text-anchor="middle" font-weight="bold">IT Admin Agent</text>
+  <text x="140.0" y="670.0" font-size="14" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(FastAPI)</text>
+  <rect x="310" y="615" width="200" height="80" fill="#eebefa" stroke="#ec4899" stroke-width="2" rx="12" opacity="1" stroke-dasharray="8,4"/>
+  <text x="410.0" y="648.0" font-size="17" fill="#1e1e1e" text-anchor="middle" font-weight="bold">AI Foundry</text>
+  <text x="410.0" y="670.0" font-size="14" fill="#1e1e1e" text-anchor="middle" font-weight="normal">(Account + Project)</text>
+  <rect x="580" y="615" width="140" height="80" fill="#ffc9c9" stroke="#ef4444" stroke-width="2" rx="12" opacity="1" stroke-dasharray="8,4"/>
+  <text x="650.0" y="660.0" font-size="17" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Key Vault</text>
+  <line x1="240" y1="655" x2="310" y2="655" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#arrowhead-amber)" stroke-dasharray="8,4"/>
+  <text x="275" y="643" font-size="14" fill="#f59e0b" text-anchor="middle" font-weight="normal">project</text>
+  <line x1="510" y1="655" x2="580" y2="655" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#arrowhead-amber)" stroke-dasharray="8,4"/>
+  <text x="545" y="643" font-size="14" fill="#f59e0b" text-anchor="middle" font-weight="normal">secrets</text>
+  <polyline points="140,615 1110,230" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#arrowhead-amber)" stroke-dasharray="8,4"/>
+  <text x="580" y="400" font-size="14" fill="#f59e0b" text-anchor="middle" font-weight="normal">model calls</text>
+  <rect x="780" y="550" width="720" height="210" fill="#e5dbff" stroke="#8b5cf6" stroke-width="2" rx="12" opacity="0.3"/>
+  <text x="815" y="575" font-size="20" fill="#6d28d9" text-anchor="start" font-weight="bold">Monitoring & Diagnostics</text>
+  <rect x="830" y="615" width="220" height="80" fill="#eebefa" stroke="#ec4899" stroke-width="2" rx="12" opacity="1"/>
+  <text x="940.0" y="662.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Application Insights</text>
+  <rect x="1190" y="615" width="220" height="80" fill="#d0bfff" stroke="#8b5cf6" stroke-width="2" rx="12" opacity="1"/>
+  <text x="1300.0" y="662.0" font-size="18" fill="#1e1e1e" text-anchor="middle" font-weight="bold">Log Analytics</text>
+  <polyline points="665,240 940,615" stroke="#757575" stroke-width="2" fill="none" marker-end="url(#arrowhead-gray)" stroke-dasharray="8,4"/>
+  <text x="760" y="440" font-size="13" fill="#757575" text-anchor="middle" font-weight="normal">telemetry</text>
+  <polyline points="860,230 1300,615" stroke="#757575" stroke-width="2" fill="none" marker-end="url(#arrowhead-gray)" stroke-dasharray="8,4"/>
+  <text x="1110" y="410" font-size="13" fill="#757575" text-anchor="middle" font-weight="normal">diagnostics</text>
+  <line x1="70" y1="790" x2="120" y2="790" stroke="#1e1e1e" stroke-width="2" fill="none" marker-end="url(#arrowhead)"/>
+  <text x="195" y="795" font-size="16" fill="#1e1e1e" text-anchor="middle" font-weight="normal">Runtime flow</text>
+  <line x1="340" y1="790" x2="390" y2="790" stroke="#757575" stroke-width="2" fill="none" marker-end="url(#arrowhead-gray)" stroke-dasharray="8,4"/>
+  <text x="465" y="795" font-size="16" fill="#757575" text-anchor="middle" font-weight="normal">Deploy / infra</text>
+  <line x1="610" y1="790" x2="660" y2="790" stroke="#f59e0b" stroke-width="2" fill="none" marker-end="url(#arrowhead-amber)" stroke-dasharray="8,4"/>
+  <text x="735" y="795" font-size="16" fill="#f59e0b" text-anchor="middle" font-weight="normal">Agent path</text>
+</svg>
