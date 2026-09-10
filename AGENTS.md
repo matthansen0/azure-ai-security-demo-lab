@@ -92,6 +92,7 @@ State tracking is written locally under `.defender/` (ignored by git).
 > - To customize the app, you'd need to modify the Dockerfile to copy local code instead
 
 ### Documentation (`/docs`)
+- `architecture/` - Static diagrams plus the interactive Archify HTML and typed JSON source
 - `issues/` - Tracked issues and enhancement documentation
 - `labs/` - Hands-on lab guides for exploring each security layer
 
@@ -108,6 +109,7 @@ State tracking is written locally under `.defender/` (ignored by git).
 | `.github/scripts/lab_rot_watch.py` | Weekly high-signal checks for lab/validator parity and confirmed broken links |
 | `scripts/preflight-check.sh` | Regional Search and exact OpenAI model/SKU/quota validation |
 | `scripts/prepdocs-search-only.py` | Policy-aware Search ingestion fallback when Blob public access is disabled |
+| `docs/architecture/azure-ai-security-sandbox.architecture.html` | Interactive Archify system map; generated from the adjacent typed JSON source |
 | `docs/responsible-ai.md` | Responsible AI control, evidence, and production-gap mapping |
 | `agents/it-admin/app.py` | IT Admin Agent FastAPI application |
 | `agents/it-admin/tools/__init__.py` | Agent tools + mock data |

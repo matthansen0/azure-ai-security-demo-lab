@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "visual-check",
+  "evidenceKind": "automated-browser",
+  "status": "skipped",
+  "visualReview": "pending",
+  "artifact": {
+    "path": "/workspaces/azure-ai-security-sandbox/docs/architecture/azure-ai-security-sandbox.architecture.html",
+    "sha256": "ab242272a02994175f2b1dd73a9dbe383b63a4a6e66769e9249276304bbc6380",
+    "bytes": 822010
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "unavailable",
+    "executable": null
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/workspaces/azure-ai-security-sandbox/docs/architecture/azure-ai-security-sandbox.architecture.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun visual-check"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "skipped",
+    "viewports": []
+  },
+  "readability": {
+    "status": "skipped",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": []
+  },
+  "viewerChrome": {
+    "status": "skipped",
+    "viewports": []
+  },
+  "captures": {
+    "status": "skipped",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "azure-ai-security-sandbox.architecture.visual-check.json",
+    "contactSheet": "azure-ai-security-sandbox.architecture.visual-check.html"
+  },
+  "error": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path."
+}

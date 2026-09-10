@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Azure AI Security Sandbox",
+    "locale": "en",
+    "output": "docs/architecture/azure-ai-security-sandbox.architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "request-path",
+        "label": "Protected RAG request",
+        "focus": ["users", "front_door", "rag_app", "apim", "openai"],
+        "note": "Follow public HTTPS through WAF inspection, the RAG runtime, AI gateway policy, and model inference."
+      },
+      {
+        "id": "retrieval-state",
+        "label": "Retrieval and state",
+        "focus": ["rag_app", "apim", "openai", "ai_search", "blob_storage", "cosmos_db"],
+        "note": "Trace vector generation, cited document retrieval, source ingestion, and conversation persistence."
+      },
+      {
+        "id": "agent-path",
+        "label": "IT Admin Agent",
+        "focus": ["it_admin_agent", "foundry", "openai", "identity"],
+        "note": "See the independent read-only agent runtime, its Foundry project boundary, and model access."
+      },
+      {
+        "id": "identity-controls",
+        "label": "Identity and gateway controls",
+        "focus": ["identity", "rag_app", "it_admin_agent", "apim", "openai"],
+        "note": "Managed identities and scoped RBAC replace backend service keys; APIM centralizes model policy."
+      },
+      {
+        "id": "security-evidence",
+        "label": "Security evidence",
+        "focus": ["front_door", "apim", "openai", "monitoring"],
+        "note": "Edge, gateway, model, and application signals converge in the shared monitoring plane."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Employees + Operators",
+      "sublabel": "browser · REST clients",
+      "tag": "CLIENTS",
+      "pos": [30, 340],
+      "size": [150, 70]
+    },
+    {
+      "id": "front_door",
+      "type": "security",
+      "label": "Azure Front Door",
+      "sublabel": "Premium · WAF Detection",
+      "tag": "EDGE",
+      "pos": [220, 340],
+      "size": [170, 70]
+    },
+    {
+      "id": "identity",
+      "type": "security",
+      "label": "Microsoft Entra ID + RBAC",
+      "sublabel": "system-managed identities",
+      "tag": "IDENTITY",
+      "pos": [450, 90],
+      "size": [170, 70]
+    },
+    {
+      "id": "rag_app",
+      "type": "backend",
+      "label": "RAG Chat App",
+      "sublabel": "Azure Container Apps",
+      "tag": "RUNTIME",
+      "pos": [450, 340],
+      "size": [170, 70]
+    },
+    {
+      "id": "foundry",
+      "type": "cloud",
+      "label": "Microsoft Foundry",
+      "sublabel": "account + Project",
+      "tag": "CONTROL PLANE",
+      "pos": [680, 90],
+      "size": [175, 70]
+    },
+    {
+      "id": "apim",
+      "type": "security",
+      "label": "API Management",
+      "sublabel": "AI gateway · BasicV2",
+      "tag": "POLICY",
+      "pos": [680, 340],
+      "size": [175, 70]
+    },
+    {
+      "id": "it_admin_agent",
+      "type": "backend",
+      "label": "IT Admin Agent",
+      "sublabel": "FastAPI · read-only tools",
+      "tag": "AGENT",
+      "pos": [920, 90],
+      "size": [175, 70]
+    },
+    {
+      "id": "openai",
+      "type": "cloud",
+      "label": "Azure OpenAI",
+      "sublabel": "GPT-4o + embeddings",
+      "tag": "MODEL",
+      "pos": [920, 340],
+      "size": [175, 70]
+    },
+    {
+      "id": "cosmos_db",
+      "type": "database",
+      "label": "Azure Cosmos DB",
+      "sublabel": "serverless · chat history",
+      "tag": "STATE",
+      "pos": [450, 590],
+      "size": [170, 70]
+    },
+    {
+      "id": "ai_search",
+      "type": "database",
+      "label": "Azure AI Search",
+      "sublabel": "hybrid + vector index",
+      "tag": "KNOWLEDGE",
+      "pos": [680, 590],
+      "size": [175, 70]
+    },
+    {
+      "id": "blob_storage",
+      "type": "database",
+      "label": "Azure Blob Storage",
+      "sublabel": "source documents",
+      "tag": "DATA",
+      "pos": [920, 590],
+      "size": [175, 70]
+    },
+    {
+      "id": "monitoring",
+      "type": "cloud",
+      "label": "Azure Monitor",
+      "sublabel": "Log Analytics + App Insights",
+      "tag": "EVIDENCE",
+      "pos": [1140, 340],
+      "size": [180, 70]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "security-group",
+      "label": "Azure subscription · sandbox resource group",
+      "wraps": [
+        "front_door",
+        "identity",
+        "rag_app",
+        "foundry",
+        "apim",
+        "it_admin_agent",
+        "openai",
+        "cosmos_db",
+        "ai_search",
+        "blob_storage",
+        "monitoring"
+      ],
+      "pad": 28
+    },
+    {
+      "kind": "security-group",
+      "label": "Managed public edge",
+      "wraps": ["front_door"],
+      "pad": 14
+    },
+    {
+      "kind": "security-group",
+      "label": "AI gateway · inference · agent control",
+      "wraps": ["foundry", "apim", "it_admin_agent", "openai"],
+      "pad": 18
+    },
+    {
+      "kind": "security-group",
+      "label": "Persistent data services",
+      "wraps": ["cosmos_db", "ai_search", "blob_storage"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "id": "public_https",
+      "from": "users",
+      "to": "front_door",
+      "label": "HTTPS :443",
+      "labelAt": [200, 424],
+      "variant": "emphasis"
+    },
+    {
+      "id": "protected_origin",
+      "from": "front_door",
+      "to": "rag_app",
+      "label": "origin HTTPS + health probes",
+      "labelAt": [420, 424],
+      "variant": "security"
+    },
+    {
+      "id": "gateway_request",
+      "from": "rag_app",
+      "to": "apim",
+      "label": "OpenAI SDK · /openai/v1",
+      "labelAt": [650, 336],
+      "variant": "emphasis"
+    },
+    {
+      "id": "managed_model_call",
+      "from": "apim",
+      "to": "openai",
+      "label": "managed identity · retry 429/5xx",
+      "labelAt": [888, 424],
+      "variant": "security"
+    },
+    {
+      "id": "vector_retrieval",
+      "from": "rag_app",
+      "to": "ai_search",
+      "label": "hybrid + vector retrieval",
+      "variant": "emphasis"
+    },
+    {
+      "id": "document_ingestion",
+      "from": "blob_storage",
+      "to": "ai_search",
+      "label": "prepdocs index pipeline",
+      "labelAt": [888, 674],
+      "variant": "dashed"
+    },
+    {
+      "id": "conversation_state",
+      "from": "rag_app",
+      "to": "cosmos_db",
+      "label": "chat history · managed identity",
+      "labelAt": [535, 424]
+    },
+    {
+      "id": "agent_inference",
+      "from": "it_admin_agent",
+      "to": "openai",
+      "label": "tool planning + synthesis · managed identity",
+      "labelAt": [1008, 174],
+      "variant": "security"
+    },
+    {
+      "id": "project_association",
+      "from": "foundry",
+      "to": "it_admin_agent",
+      "label": "project boundary + management",
+      "labelAt": [888, 174],
+      "variant": "dashed"
+    },
+    {
+      "id": "runtime_authorization",
+      "from": "identity",
+      "to": "rag_app",
+      "label": "managed identity + RBAC",
+      "labelAt": [535, 174],
+      "variant": "security"
+    },
+    {
+      "id": "diagnostic_stream",
+      "from": "openai",
+      "to": "monitoring",
+      "label": "diagnostics + audit signals",
+      "labelAt": [1128, 336],
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Protected Request + RAG",
+      "items": [
+        "Front Door WAF inspects public HTTPS; Detection is the sandbox default",
+        "The RAG app sends embedding and completion calls through APIM",
+        "AI Search returns cited chunks; Cosmos DB persists conversations"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Identity + AI Controls",
+      "items": [
+        "APIM authenticates to Azure OpenAI with managed identity and retries 429/5xx responses",
+        "Scoped RBAC protects model, search, storage, state, and agent access",
+        "GPT-4o uses sandbox-content-safety filters for harmful content and prompt attacks"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Evidence + Production Boundary",
+      "items": [
+        "Diagnostics feed Log Analytics; App Insights traces runtime behavior",
+        "Defender plans are optional; core azd up leaves them disabled",
+        "Production needs app auth, private networking, and multi-region design"
+      ]
+    }
+  ]
+}

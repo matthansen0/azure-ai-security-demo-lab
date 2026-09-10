@@ -33,6 +33,8 @@ A self-contained Azure AI security demonstration platform featuring a RAG (Retri
 
 ![Azure AI Security Sandbox Architecture](docs/architecture/architecture.png)
 
+Explore the [interactive, in-depth Archify diagram](docs/architecture/azure-ai-security-sandbox.architecture.html) or review its [typed JSON source](docs/architecture/azure-ai-security-sandbox.architecture.json).
+
 ## 🔐 Security Features
 
 | Component | Protection | Description |
