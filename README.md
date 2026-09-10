@@ -1,4 +1,66 @@
-# 🤖 Azure AI Security Sandbox 🔐
+# Azure AI Security Sandbox
+
+Security-focused reference architecture for an Azure OpenAI RAG application. It deploys Azure Front Door with WAF, API Management as an AI gateway, Container Apps, Azure AI Search, Azure AI Foundry, and managed identities with least-privilege RBAC.
+
+![Azure AI Security Sandbox Architecture](docs/architecture/architecture.png)
+
+Explore the [interactive architecture diagram](https://matthansen0.github.io/azure-ai-security-sandbox/) or read [how the architecture works](HOW_IT_WORKS.md).
+
+## Deploy
+
+### Prerequisites
+
+- An Azure subscription where you can create resources and role assignments
+- [Azure Developer CLI (`azd`)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
+- Azure CLI
+
+```bash
+git clone --recurse-submodules https://github.com/matthansen0/azure-ai-security-sandbox.git
+cd azure-ai-security-sandbox
+az login
+azd auth login
+azd up
+```
+
+`azd up` prompts for an environment name and region, provisions the infrastructure, builds the application images, and prints the public application URL. A full deployment typically takes 30-50 minutes.
+
+## Important Parameters
+
+Set parameters before `azd up` with `azd env set <NAME> <VALUE>`.
+
+| Parameter | Default | Notes |
+|---|---|---|
+| `AZURE_LOCATION` | Required | Validated regions: `eastus`, `eastus2`, `canadaeast`, `japaneast`, `australiaeast` |
+| `APIM_SKU` | `BasicV2` | `BasicV2` or `StandardV2` |
+| `WAF_MODE` | `Detection` | Use `Prevention` when ready to block matching requests |
+| `SKIP_PREFLIGHT` | `false` | Set only when deliberately bypassing region, model, SKU, and capacity checks |
+
+Example:
+
+```bash
+azd env set AZURE_LOCATION japaneast
+azd env set WAF_MODE Prevention
+azd up
+```
+
+Defender plans are an opt-in, subscription-scoped add-on. See the [Defender add-on guidance](docs/troubleshooting.md#defender-plans) before enabling them.
+
+## Tear Down
+
+```bash
+azd down --force --purge
+```
+
+This removes the environment and purges its soft-deleted Azure OpenAI, Foundry, and API Management resources. If you enabled Defender with the add-on, run `./scripts/disable-defender.sh --confirm` to revert its subscription-wide plan changes.
+
+## More Information
+
+- [Architecture and security controls](HOW_IT_WORKS.md)
+- [Hands-on lab guides](docs/labs/README.md)
+- [Responsible AI mapping](docs/responsible-ai.md)
+- [Troubleshooting, validation, and operations](docs/troubleshooting.md)
+- [Defender for AI status](docs/issues/defender-for-ai.md)
+- [License](LICENSE)# 🤖 Azure AI Security Sandbox 🔐
 
 [![Open in GitHub Codespaces](https://img.shields.io/static/v1?style=for-the-badge&label=GitHub+Codespaces&message=Open&color=brightgreen&logo=github)](https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=matthansen0%2Fazure-ai-security-sandbox&machine=standardLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&location=WestUs2)
 [![Open in Dev Containers](https://img.shields.io/static/v1?style=for-the-badge&label=Dev%20Containers&message=Open&color=blue&logo=visualstudiocode)](https://vscode.dev/redirect?url=vscode://ms-vscode-remote.remote-containers/cloneInVolume?url=https%3A%2F%2Fgithub.com%2Fmatthansen0%2Fazure-ai-security-sandbox)
@@ -40,7 +102,7 @@ Explore the [interactive, in-depth Archify diagram](https://matthansen0.github.i
 | Component | Protection | Description |
 |-----------|------------|-------------|
 | **Front Door + WAF** | Edge Security | OWASP managed rules, bot protection, DDoS mitigation |
-| **API Management** | AI Gateway | Centralized AI endpoint management with managed identity auth + retry logic (optional rate limiting / token usage logging) |
+| **API Management** | AI Gateway | OpenAI and IT Admin Agent APIs, managed identity auth, retries, subscription enforcement, and developer portal |
 | **Foundry Guardrails** | Content Safety | Explicit blocking policy for harmful content and direct/indirect prompt attacks |
 | **Defender for AI** | AI Threat Detection | Tracked enhancement (not enabled by default): https://github.com/matthansen0/azure-ai-security-sandbox/issues/14 |
 | **Defender for APIs** | API Protection | Optional Defender for Cloud plan (enabled via add-on script) |
@@ -56,6 +118,8 @@ Explore the [interactive, in-depth Archify diagram](https://matthansen0.github.i
 Azure API Management acts as a centralized **AI Gateway** providing:
 
 - **Managed Identity Auth** - APIM authenticates to Azure OpenAI using its managed identity (no keys)
+- **Agent API Gateway** - Publishes the IT Admin Agent at `/it-agent` with APIM subscription enforcement
+- **Developer Portal** - Publishes discoverable API operations and an interactive test console
 - **Retry Logic** - Automatic retry with exponential backoff for 429s and 5xx errors
 - **Optional: Rate Limiting / Quotas** - Add incrementally once the basic gateway flow is stable
 - **Optional: Token Usage Logging** - Add incrementally; policy expressions can be finicky
