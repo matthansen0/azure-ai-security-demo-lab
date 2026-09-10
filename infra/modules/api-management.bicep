@@ -93,6 +93,7 @@ resource apimService 'Microsoft.ApiManagement/service@2023-09-01-preview' = {
   properties: {
     publisherEmail: publisherEmail
     publisherName: publisherName
+    developerPortalStatus: 'Enabled'
     // Enable Application Insights integration
     customProperties: {
       'Microsoft.WindowsAzure.ApiManagement.Gateway.Security.Protocols.Tls11': 'false'
@@ -562,6 +563,17 @@ resource aiGatewayProduct 'Microsoft.ApiManagement/service/products@2023-09-01-p
   }
 }
 
+// Products are visible in the developer portal only when associated with a group.
+resource guestProductAccess 'Microsoft.ApiManagement/service/products/groups@2023-09-01-preview' = {
+  parent: aiGatewayProduct
+  name: 'guests'
+}
+
+resource developerProductAccess 'Microsoft.ApiManagement/service/products/groups@2023-09-01-preview' = {
+  parent: aiGatewayProduct
+  name: 'developers'
+}
+
 // Link API to Product
 resource productApiLink 'Microsoft.ApiManagement/service/products/apis@2023-09-01-preview' = {
   parent: aiGatewayProduct
@@ -584,6 +596,7 @@ resource internalSubscription 'Microsoft.ApiManagement/service/subscriptions@202
 output apimServiceId string = apimService.id
 output apimServiceName string = apimService.name
 output apimGatewayUrl string = apimService.properties.gatewayUrl
+output developerPortalUrl string = 'https://${apimService.name}.developer.azure-api.net'
 output apimIdentityPrincipalId string = apimService.identity.principalId
 output openAiApiId string = openAiApi.id
 output openAiApiPath string = openAiApi.properties.path

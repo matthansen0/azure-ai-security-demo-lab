@@ -28,6 +28,9 @@ param searchServiceName string
 @description('Existing Azure AI Search endpoint')
 param searchEndpoint string
 
+@description('Set to true if a soft-deleted Foundry resource with the same name exists and should be restored')
+param restoreSoftDeletedAccount bool = false
+
 // AI Foundry account (project-based Foundry resource)
 resource account 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
   name: accountName
@@ -45,6 +48,7 @@ resource account 'Microsoft.CognitiveServices/accounts@2025-10-01-preview' = {
     customSubDomainName: accountName
     disableLocalAuth: true
     publicNetworkAccess: 'Enabled' // For demo purposes; use private endpoints in production
+    restore: restoreSoftDeletedAccount
     networkAcls: {
       defaultAction: 'Allow'
     }

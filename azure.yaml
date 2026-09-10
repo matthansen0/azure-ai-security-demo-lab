@@ -102,6 +102,18 @@ hooks:
         --supported-protocols Http Https \
         --enabled-state Enabled \
         --output none 2>/dev/null || true
+
+      echo "Publishing API Management developer portal..."
+      PORTAL_REVISION=$(date -u +%Y%m%d%H%M%S)
+      if ! az rest \
+        --method put \
+        --uri "https://management.azure.com/subscriptions/${AZURE_SUBSCRIPTION_ID}/resourceGroups/${RESOURCE_GROUP_NAME}/providers/Microsoft.ApiManagement/service/${APIM_SERVICE_NAME}/portalRevisions/${PORTAL_REVISION}?api-version=2024-05-01" \
+        --headers "If-Match=*" \
+        --body "{\"properties\":{\"description\":\"azd deployment ${PORTAL_REVISION}\",\"isCurrent\":true}}" \
+        --output none; then
+        echo "Failed to publish the API Management developer portal." >&2
+        exit 1
+      fi
       
       # Run prepdocs from upstream submodule to populate search index
       echo "Running prepdocs to populate search index..."

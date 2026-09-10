@@ -15,8 +15,9 @@
 3. On the **Overview** page, note:
    - **Gateway URL** — this is the proxy endpoint all OpenAI traffic flows through
    - **SKU** — `BasicV2` (balances cost, features, and provisioning speed)
-4. Under **APIs** in the left menu, click **APIs**. You'll see an API named **openai**.
-5. Click **openai** → browse the operations listed (chat completions, embeddings, etc.).
+4. Under **APIs** in the left menu, click **APIs**. You'll see **openai** and **IT Admin Agent API**.
+5. Browse **openai** operations, then open **IT Admin Agent API** and note its `/it-agent` path.
+6. Open the managed developer portal from the `APIM_DEVELOPER_PORTAL_URL` azd output and select **APIs** to browse the same published operations.
 
 **Key takeaway:** APIM acts as a gateway that intercepts all traffic between the chat app and Azure OpenAI.
 

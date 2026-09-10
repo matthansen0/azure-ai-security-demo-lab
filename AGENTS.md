@@ -52,6 +52,7 @@ User → Azure Front Door (WAF) → Azure API Management (AI Gateway) → Contai
 - `modules/agents/` - **AI Agent infrastructure (optional)**:
   - `ai-foundry.bicep` - Project-based AI Foundry account + Project for Agent Service
   - `agent-api.bicep` - Container App for agent API
+  - `agent-api-management.bicep` - APIM `/it-agent` API plus managed-identity OpenAI routing
   - `agent-role-assignments.bicep` - RBAC for agent managed identities
 
 ### IT Admin Agent (`/agents/it-admin`)
@@ -152,11 +153,11 @@ The script tests each lab's core claims and prints `PASS / FAIL / SKIP` for each
 | Lab | What it validates |
 |-----|-------------------|
 | **Lab 1** | Front Door WAF (`x-azure-ref` header), `/chat` HTTP 200, RAG citations returned end-to-end |
-| **Lab 2** | APIM with valid key → 200, APIM without key → 401 |
+| **Lab 2** | APIM with valid key → 200, APIM without key → 401; agent API registered; developer portal published |
 | **Lab 3** | Managed identity exists on backend + agent apps, correct RBAC roles assigned (OpenAI, Search, Cosmos) |
 | **Lab 4** | Log Analytics workspace + App Insights exist in resource group |
 | **Lab 5** | Defender for APIs + Defender for Storage at Standard tier; search index populated (758 docs); backend RAG returns citations |
-| **Lab 6** | Agent `/health` healthy, 7 tools registered, `/chat` invokes tools and returns investigation response, `delete_resource` not directly exposed (read-only safety), project-based Foundry account + Project deployed |
+| **Lab 6** | APIM-backed agent `/health`, auth, tools, and `/chat`; outbound model endpoint points to APIM; destructive tool absent; Foundry account + Project deployed |
 | **Lab 7** | Defender for AI at Standard tier, AIPromptEvidence extension enabled |
 | **Lab 8** | Explicit Foundry guardrail policy enables blocking for indirect prompt attacks and is bound to the `gpt-4o` deployment |
 
@@ -285,7 +286,7 @@ The core deployment creates role assignments for two principals:
 2. **Deploying user** - Prepdocs access (uploads blobs, creates search indexes)
 
 It also assigns least-privilege roles to:
-3. **Agent API Container App managed identity** - OpenAI, Search read, and Storage access
+3. **Agent API Container App managed identity** - APIM-authenticated model routing, Search read, and Storage access (no direct OpenAI role)
 4. **Foundry account managed identity** - Connected OpenAI, Search, and Foundry access
 5. **Foundry Project managed identity** - Connected OpenAI, Search read, and Foundry developer access
 

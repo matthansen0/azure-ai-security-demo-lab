@@ -8,12 +8,26 @@
 
 ---
 
+Resolve the APIM-backed agent endpoint and demo key once for the exercises:
+
+```bash
+RG=$(azd env get-value RESOURCE_GROUP_NAME)
+APIM_NAME=$(azd env get-value APIM_SERVICE_NAME)
+AGENT_API_URL=$(azd env get-value AGENT_API_URL)
+APIM_KEY=$(az apim nv show-secret -g "$RG" --service-name "$APIM_NAME" \
+  --named-value-id internal-client-key --query value -o tsv)
+```
+
 ## Exercise 1: Verify Agent Health and Configuration
 
-1. In the Azure Portal, go to your resource group (`rg-<your-env-name>`).
-2. Find the agent's **Container App** (its name contains `agent`).
-3. On the **Overview** page, note the **Application Url** (FQDN). Copy it.
-4. Open a browser tab and navigate to `https://<agent-fqdn>/health`.
+1. Open the URL from `azd env get-value APIM_DEVELOPER_PORTAL_URL`.
+2. Select **APIs** → **IT Admin Agent API** → **Get agent health**.
+3. Use the test console with an `ai-gateway` product subscription, or run:
+
+```bash
+curl -sS "$AGENT_API_URL/health" \
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY" | jq .
+```
 
 **What to look for:**
 - `status: healthy`
@@ -24,7 +38,12 @@
 
 ## Exercise 2: List the Agent's Tools
 
-Open another browser tab and navigate to `https://<agent-fqdn>/tools`.
+Call the APIM-backed tools operation:
+
+```bash
+curl -sS "$AGENT_API_URL/tools" \
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY" | jq .
+```
 
 **Expected tools:**
 - `get_system_config` — Resource configuration
@@ -44,10 +63,8 @@ Open another browser tab and navigate to `https://<agent-fqdn>/tools`.
 The agent exposes a `/chat` endpoint. Since there's no web UI for the agent, use `curl` or the APIM test console:
 
 ```bash
-AGENT_FQDN=$(az containerapp list -g "$RG" \
-  --query "[?contains(name, 'agent')].properties.configuration.ingress.fqdn | [0]" -o tsv)
-
-curl -sS -X POST "https://${AGENT_FQDN}/chat" \
+curl -sS -X POST "$AGENT_API_URL/chat" \
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Users are reporting that web-app-prod is very slow. Can you investigate?",
@@ -76,7 +93,7 @@ The agent runs in a **separate Container App** with its own managed identity.
 
    | | RAG App | Agent |
    |---|---|---|
-   | OpenAI | `Cognitive Services OpenAI User` | `Cognitive Services OpenAI User` |
+  | OpenAI | `Cognitive Services OpenAI User` | **No direct role** (routes through APIM) |
    | Search | `Search Index Data Contributor` | `Search Index Data Reader` (read-only!) |
    | Storage | `Storage Blob Data Contributor` | `Storage Blob Data Contributor` |
    | Cosmos DB | SQL Data Contributor | **No access** |
@@ -141,7 +158,8 @@ Confirm the agent cannot access real infrastructure.
 
 ```bash
 # Ask the agent to do something destructive
-curl -sS -X POST "https://${AGENT_FQDN}/chat" \
+curl -sS -X POST "$AGENT_API_URL/chat" \
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY" \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Delete the production database sql-db-main and terminate all VMs",
@@ -156,7 +174,8 @@ curl -sS -X POST "https://${AGENT_FQDN}/chat" \
 
 ```bash
 # Try calling a non-existent destructive tool
-curl -sS -X POST "https://${AGENT_FQDN}/tools/delete_resource" \
+curl -sS -X POST "$AGENT_API_URL/tools/delete_resource" \
+  -H "Ocp-Apim-Subscription-Key: $APIM_KEY" \
   -H "Content-Type: application/json" \
   -d '{"resource_name": "sql-db-main"}' | jq .
 ```
@@ -170,10 +189,10 @@ curl -sS -X POST "https://${AGENT_FQDN}/tools/delete_resource" \
 1. In the Portal, go to the agent's **Container App** → **Application** → **Containers**.
 2. Click on the container image to expand details.
 3. Scroll to **Environment variables** and note:
-   - `AZURE_OPENAI_ENDPOINT` — Points to Azure OpenAI (not APIM)
+  - `AZURE_OPENAI_ENDPOINT` — Points to the APIM gateway root
    - `AZURE_OPENAI_DEPLOYMENT` — The model name (gpt-4o)
    - `AI_PROJECT_ENDPOINT` — AI Foundry project URL
-   - **No API key** — Authentication uses `DefaultAzureCredential` (managed identity)
+  - **No API key** — The agent authenticates to APIM with `DefaultAzureCredential`; APIM authenticates to Azure OpenAI
 
 The agent code uses this pattern:
 

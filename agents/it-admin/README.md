@@ -6,6 +6,7 @@ An AI-powered troubleshooting agent for IT administrators. This agent helps diag
 
 The IT Admin Agent demonstrates:
 - **Azure AI Foundry integration** - Uses a project-based AI Foundry account and Project for agent management
+- **API gateway protection** - APIM publishes the agent at `/it-agent` and requires a subscription key
 - **Tool calling** - Agent uses tools to gather information about systems
 - **Multi-step reasoning** - Diagnoses issues through iterative investigation
 - **Mock data** - Realistic Azure infrastructure data for demonstration
@@ -13,18 +14,17 @@ The IT Admin Agent demonstrates:
 ## Architecture
 
 ```
-                                    ┌─────────────────────────────┐
-                                    │   IT Admin Agent API        │
- curl/Postman ──────────────────▶  │   (FastAPI + Container App) │
-                                    └───────────┬─────────────────┘
-                                                │
-                    ┌───────────────────────────┼───────────────────────────┐
-                    │                           │                           │
-                    ▼                           ▼                           ▼
-         ┌──────────────────┐       ┌──────────────────┐       ┌──────────────────┐
-         │  Azure OpenAI    │       │  Tool Functions   │       │  AI Foundry      │
-         │  (GPT-4o)        │       │  (Mock Data)      │       │ (Account+Project)│
-         └──────────────────┘       └──────────────────┘       └──────────────────┘
+                       curl/Postman/Developer Portal
+                              │
+                              ▼
+                       API Management (/it-agent) ──▶ IT Admin Agent API (Container App)
+                              ▲                         │                │
+                              │                         ▼                ▼
+                              └──────────── API Management       Tool Functions / AI Foundry
+                                (/openai, managed identity)     (Mock Data)
+                                       │
+                                       ▼
+                                   Azure OpenAI (GPT-4o)
 ```
 
 ## Deployment
@@ -32,9 +32,15 @@ The IT Admin Agent demonstrates:
 `azd up` provisions:
 - Project-based AI Foundry account and Project
 - Agent API Container App
+- APIM `/it-agent` API, operations, and `ai-gateway` product link
+- Published APIM developer portal
 - Required role assignments
 
 ## API Reference
+
+The paths below are relative to the `AGENT_API_URL` azd output and require the
+`Ocp-Apim-Subscription-Key` header. Browse the same operations at the
+`APIM_DEVELOPER_PORTAL_URL` azd output.
 
 ### Health Check
 

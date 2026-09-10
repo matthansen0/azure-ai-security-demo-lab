@@ -59,6 +59,7 @@ if [[ -z "$RG" ]]; then
   RG="rg-$ENV_NAME"
 fi
 echo "Resource group: $RG"
+SUB=$(az account show --query id -o tsv 2>/dev/null)
 
 # Container apps
 BACKEND_CA=$(az containerapp list -g "$RG" --query \
@@ -78,6 +79,8 @@ fi
 FD_URL=$(get_azd_value FRONTDOOR_URL)
 APIM_URL=$(get_azd_value APIM_GATEWAY_URL)
 APIM_NAME=$(get_azd_value APIM_SERVICE_NAME)
+APIM_DEVELOPER_PORTAL_URL=$(get_azd_value APIM_DEVELOPER_PORTAL_URL)
+AGENT_API_URL=$(get_azd_value AGENT_API_URL)
 
 # APIM key
 APIM_KEY=""
@@ -98,6 +101,8 @@ echo "Backend: $BACKEND_FQDN"
 echo "Agent:   ${AGENT_FQDN:-<missing required output>}"
 echo "AFD:     $FD_URL"
 echo "APIM:    $APIM_URL"
+echo "Agent API through APIM: ${AGENT_API_URL:-<missing required output>}"
+echo "APIM developer portal:  ${APIM_DEVELOPER_PORTAL_URL:-<missing required output>}"
 
 # ---------------------------------------------------------------------------
 # Lab 1 — Front Door + WAF
@@ -171,6 +176,31 @@ if [[ -n "$APIM_URL" && -n "$APIM_KEY" ]]; then
   else
     fail "L2: APIM without key → HTTP $HTTP_APIM_NO (expected 401)"
   fi
+
+  AGENT_APIM_PATH=$(az apim api show -g "$RG" --service-name "$APIM_NAME" \
+    --api-id it-admin-agent --query path -o tsv 2>/dev/null || true)
+  if [[ "$AGENT_APIM_PATH" == "it-agent" ]]; then
+    pass "L2: IT Admin Agent API registered at /$AGENT_APIM_PATH"
+  else
+    fail "L2: IT Admin Agent API missing from APIM"
+  fi
+
+  PRODUCT_GROUPS=$(az rest --method get \
+    --uri "https://management.azure.com/subscriptions/${SUB}/resourceGroups/${RG}/providers/Microsoft.ApiManagement/service/${APIM_NAME}/products/ai-gateway/groups?api-version=2024-05-01" \
+    --query 'sort(value[].name)' -o tsv 2>/dev/null || true)
+  if [[ "$PRODUCT_GROUPS" == *"developers"* && "$PRODUCT_GROUPS" == *"guests"* ]]; then
+    pass "L2: Developer portal product visible to guests and developers"
+  else
+    fail "L2: AI Gateway product missing developer portal audience groups"
+  fi
+
+  PORTAL_HTTP=$(curl -sS -L -o /dev/null -w '%{http_code}' -m 30 \
+    "${APIM_DEVELOPER_PORTAL_URL}/apis" 2>/dev/null || echo "000")
+  if [[ "$PORTAL_HTTP" == "200" ]]; then
+    pass "L2: APIM developer portal published → HTTP $PORTAL_HTTP"
+  else
+    fail "L2: APIM developer portal HTTP $PORTAL_HTTP (expected 200)"
+  fi
 else
   fail "L2: APIM not configured — required API Management deployment is missing"
 fi
@@ -190,7 +220,6 @@ else
 fi
 
 # 3b. OpenAI User role assigned to backend identity
-SUB=$(az account show --query id -o tsv 2>/dev/null)
 OPENAI_ROLE=$(az role assignment list --assignee "$BACKEND_IDENTITY" \
   --all \
   --query "[?contains(roleDefinitionName,'OpenAI')].roleDefinitionName | [0]" \
@@ -343,30 +372,53 @@ fi
 # ---------------------------------------------------------------------------
 header "Lab 6: IT Admin Agent"
 
-if [[ -n "$AGENT_FQDN" ]]; then
-  # 6a. Health endpoint
-  AGENT_HEALTH=$(curl -sf -m 20 "https://$AGENT_FQDN/health" 2>/dev/null \
+if [[ -n "$AGENT_FQDN" && -n "$AGENT_API_URL" && -n "$APIM_KEY" ]]; then
+  # 6a. APIM-backed health endpoint
+  AGENT_HEALTH=$(curl -sf -m 20 "$AGENT_API_URL/health" \
+    -H "Ocp-Apim-Subscription-Key: $APIM_KEY" 2>/dev/null \
     | python3 -c "import json,sys; d=json.load(sys.stdin); print(f\"{d.get('status','?')}|{str(d.get('openai_configured',False)).lower()}|{str(d.get('project_configured',False)).lower()}\")" 2>/dev/null || echo "unreachable")
   if [[ "$AGENT_HEALTH" == "healthy|true|true" ]]; then
-    pass "L6: Agent /health → $AGENT_HEALTH"
+    pass "L6: APIM agent /health → $AGENT_HEALTH"
   else
-    fail "L6: Agent /health → $AGENT_HEALTH (expected healthy|true|true)"
+    fail "L6: APIM agent /health → $AGENT_HEALTH (expected healthy|true|true)"
   fi
 
-  # 6b. Tools registered
-  TOOLS_COUNT=$(curl -sf -m 20 "https://$AGENT_FQDN/tools" 2>/dev/null \
+  # 6b. APIM rejects anonymous agent requests
+  HTTP_AGENT_NO_KEY=$(curl -s -o /dev/null -w '%{http_code}' -m 15 \
+    "$AGENT_API_URL/health" 2>/dev/null || echo "000")
+  if [[ "$HTTP_AGENT_NO_KEY" == "401" ]]; then
+    pass "L6: APIM agent without key → HTTP 401"
+  else
+    fail "L6: APIM agent without key → HTTP $HTTP_AGENT_NO_KEY (expected 401)"
+  fi
+
+  # 6c. Agent model calls target APIM
+  AGENT_OPENAI_ENDPOINT=$(az containerapp show -g "$RG" -n "$AGENT_CA" \
+    --query "properties.template.containers[0].env[?name=='AZURE_OPENAI_ENDPOINT'].value | [0]" \
+    -o tsv 2>/dev/null || true)
+  if [[ "$AGENT_OPENAI_ENDPOINT" == "$APIM_URL" ]]; then
+    pass "L6: Agent Azure OpenAI calls route through APIM"
+  else
+    fail "L6: Agent Azure OpenAI endpoint bypasses APIM ($AGENT_OPENAI_ENDPOINT)"
+  fi
+
+  # 6d. Tools registered
+  TOOLS_JSON=$(curl -sf -m 20 "$AGENT_API_URL/tools" \
+    -H "Ocp-Apim-Subscription-Key: $APIM_KEY" 2>/dev/null || echo '{}')
+  TOOLS_COUNT=$(printf '%s' "$TOOLS_JSON" \
     | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d.get('tools',[])))" 2>/dev/null || echo 0)
   if [[ "$TOOLS_COUNT" -ge 1 ]]; then
-    TOOL_NAMES=$(curl -sf -m 20 "https://$AGENT_FQDN/tools" 2>/dev/null \
+    TOOL_NAMES=$(printf '%s' "$TOOLS_JSON" \
       | python3 -c "import json,sys; d=json.load(sys.stdin); print([t['function']['name'] for t in d.get('tools',[])])" 2>/dev/null || echo "[]")
     pass "L6: Agent tools registered ($TOOLS_COUNT tools) — $TOOL_NAMES"
   else
     fail "L6: No tools returned from agent /tools endpoint"
   fi
 
-  # 6c. Agent /chat calls tools and returns an answer
+  # 6e. Agent /chat calls tools and returns an answer
   HTTP_AGENT=$(curl -s -o /tmp/val-agent-chat.json -w '%{http_code}' -m 90 \
-    -X POST "https://$AGENT_FQDN/chat" \
+    -X POST "$AGENT_API_URL/chat" \
+    -H "Ocp-Apim-Subscription-Key: $APIM_KEY" \
     -H 'Content-Type: application/json' \
     -d '{"message":"Users are reporting that web-app-prod is very slow. Can you investigate?","context":{"environment":"production","region":"eastus"}}' 2>/dev/null)
   HAS_RESP=$(python3 -c "
@@ -383,9 +435,10 @@ except: print('false', 0)
     fail "L6: Agent /chat HTTP $HTTP_AGENT; response/tool calls: $HAS_RESP"
   fi
 
-  # 6d. delete_resource endpoint not exposed (returns 404) — read-only safety
+  # 6f. delete_resource endpoint not exposed (returns 404) — read-only safety
   HTTP_DEL=$(curl -s -o /dev/null -w '%{http_code}' -m 15 \
-    -X POST "https://$AGENT_FQDN/tools/delete_resource" \
+    -X POST "$AGENT_API_URL/tools/delete_resource" \
+    -H "Ocp-Apim-Subscription-Key: $APIM_KEY" \
     -H 'Content-Type: application/json' \
     -d '{"resource_name":"sql-db-main"}' 2>/dev/null || echo "000")
   if [[ "$HTTP_DEL" == "404" || "$HTTP_DEL" == "405" ]]; then
@@ -394,7 +447,7 @@ except: print('false', 0)
     fail "L6: delete_resource endpoint returned HTTP $HTTP_DEL (expected 404/405)"
   fi
 
-  # 6e. Project-based Foundry account + Project exist
+  # 6g. Project-based Foundry account + Project exist
   FOUNDRY_ACCOUNTS=$(az cognitiveservices account list -g "$RG" \
     --query "[?kind=='AIServices' && properties.allowProjectManagement].name" -o tsv 2>/dev/null || true)
   FOUNDRY_PROJECTS=$(az resource list -g "$RG" \
@@ -410,7 +463,7 @@ except: print('false', 0)
     fail "L6: No project-based AI Foundry account/project found"
   fi
 else
-  fail "L6: Agent container app not found"
+  fail "L6: APIM-backed agent API not configured"
 fi
 
 # ---------------------------------------------------------------------------

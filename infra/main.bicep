@@ -217,19 +217,22 @@ module frontDoor 'modules/front-door.bicep' = {
 // ============ IT Admin Agent Infrastructure ============
 
 // AI Foundry account and project for Agent Service
+var foundryResourceToken = toLower(uniqueString(subscription().id, environmentName, location, 'foundry-v1'))
+
 module aiFoundry 'modules/agents/ai-foundry.bicep' = {
   name: 'aiFoundry'
   scope: rg
   params: {
     location: location
     tags: tags
-    accountName: '${abbrs.aiFoundryAccounts}${resourceToken}'
-    projectName: '${abbrs.machineLearningProject}${resourceToken}'
+    accountName: '${abbrs.aiFoundryAccounts}${foundryResourceToken}'
+    projectName: '${abbrs.machineLearningProject}${foundryResourceToken}'
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
     openAiAccountName: aiServices.outputs.openAiAccountName
     openAiEndpoint: aiServices.outputs.openAiEndpoint
     searchServiceName: aiServices.outputs.searchServiceName
     searchEndpoint: aiServices.outputs.searchEndpoint
+    restoreSoftDeletedAccount: restoreSoftDeletedOpenAi
   }
 }
 
@@ -245,7 +248,8 @@ module agentApi 'modules/agents/agent-api.bicep' = {
     containerRegistryLoginServer: containerRegistry.outputs.loginServer
     containerRegistryName: containerRegistry.outputs.name
     applicationInsightsConnectionString: monitoring.outputs.applicationInsightsConnectionString
-    openAiEndpoint: aiServices.outputs.openAiEndpoint
+    // AzureOpenAI appends /openai/deployments/... to this gateway root.
+    openAiEndpoint: apiManagement.outputs.apimGatewayUrl
     openAiDeploymentName: aiServices.outputs.chatDeploymentName
     projectEndpoint: aiFoundry.outputs.projectEndpoint
     logAnalyticsWorkspaceId: monitoring.outputs.logAnalyticsWorkspaceId
@@ -263,6 +267,20 @@ module agentRoleAssignments 'modules/agents/agent-role-assignments.bicep' = {
     openAiAccountName: aiServices.outputs.openAiAccountName
     searchServiceName: aiServices.outputs.searchServiceName
     storageAccountName: storage.outputs.storageAccountName
+  }
+}
+
+// Publish the agent API through APIM after both resources exist. This module also
+// permits only the agent managed identity to use the OpenAI chat operation.
+module agentApiManagement 'modules/agents/agent-api-management.bicep' = {
+  name: 'agentApiManagement'
+  scope: rg
+  params: {
+    apimServiceName: apiManagement.outputs.apimServiceName
+    apimGatewayUrl: apiManagement.outputs.apimGatewayUrl
+    agentApiBackendUrl: agentApi.outputs.agentApiUrl
+    agentApiPrincipalId: agentApi.outputs.identityPrincipalId
+    tenantId: tenant().tenantId
   }
 }
 
@@ -311,6 +329,7 @@ output AZURE_COSMOSDB_ENDPOINT string = cosmosDb.outputs.cosmosDbEndpoint
 // API Management outputs
 output APIM_GATEWAY_URL string = apiManagement.outputs.apimGatewayUrl
 output APIM_SERVICE_NAME string = apiManagement.outputs.apimServiceName
+output APIM_DEVELOPER_PORTAL_URL string = apiManagement.outputs.developerPortalUrl
 output AZURE_OPENAI_VIA_APIM string = '${apiManagement.outputs.apimGatewayUrl}/${apiManagement.outputs.openAiApiPath}'
 
 // AI Gateway routing status - indicates if Container App routes through APIM
@@ -319,7 +338,9 @@ output CONTAINER_APP_OPENAI_ENDPOINT string = containerApps.outputs.configuredOp
 
 // Agent outputs
 output AGENT_ENABLED bool = true
-output AGENT_API_URL string = agentApi.outputs.agentApiUrl
+output AGENT_API_URL string = agentApiManagement.outputs.agentApiUrl
+output AGENT_API_VIA_APIM string = agentApiManagement.outputs.agentApiUrl
+output AGENT_CONTAINER_APP_URL string = agentApi.outputs.agentApiUrl
 output AGENT_API_NAME string = agentApi.outputs.containerAppName
 output AI_FOUNDRY_ACCOUNT_NAME string = aiFoundry.outputs.accountName
 output AI_FOUNDRY_PROJECT_NAME string = aiFoundry.outputs.projectName

@@ -44,17 +44,6 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing 
 
 // ============ Agent API Container App Role Assignments ============
 
-// Agent API → Azure OpenAI (Cognitive Services OpenAI User)
-resource agentApiOpenAiRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(openAiAccount.id, agentApiPrincipalId, cognitiveServicesOpenAiUserRole)
-  scope: openAiAccount
-  properties: {
-    principalId: agentApiPrincipalId
-    roleDefinitionId: cognitiveServicesOpenAiUserRole
-    principalType: 'ServicePrincipal'
-  }
-}
-
 // Agent API → Azure AI Search (Index Data Reader for RAG queries)
 resource agentApiSearchRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(searchService.id, agentApiPrincipalId, searchIndexDataReaderRole)

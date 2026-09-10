@@ -22,8 +22,8 @@
       {
         "id": "agent-path",
         "label": "IT Admin Agent",
-        "focus": ["it_admin_agent", "foundry", "openai", "identity"],
-        "note": "See the independent read-only agent runtime, its Foundry project boundary, and model access."
+        "focus": ["users", "apim", "it_admin_agent", "foundry", "openai", "identity"],
+        "note": "Trace subscription-protected agent ingress and managed-identity model calls through APIM."
       },
       {
         "id": "identity-controls",
@@ -89,7 +89,7 @@
       "id": "apim",
       "type": "security",
       "label": "API Management",
-      "sublabel": "AI gateway · BasicV2",
+      "sublabel": "AI gateway + developer portal",
       "tag": "POLICY",
       "pos": [680, 340],
       "size": [175, 70]
@@ -243,10 +243,17 @@
       "labelAt": [535, 424]
     },
     {
+      "id": "agent_api_request",
+      "from": "users",
+      "to": "apim",
+      "label": "subscription key · /it-agent",
+      "variant": "security"
+    },
+    {
       "id": "agent_inference",
       "from": "it_admin_agent",
-      "to": "openai",
-      "label": "tool planning + synthesis · managed identity",
+      "to": "apim",
+      "label": "model calls · managed identity · /openai",
       "labelAt": [1008, 174],
       "variant": "security"
     },
@@ -289,7 +296,7 @@
       "dot": "rose",
       "title": "Identity + AI Controls",
       "items": [
-        "APIM authenticates to Azure OpenAI with managed identity and retries 429/5xx responses",
+        "APIM protects agent ingress and authenticates all model calls with managed identity",
         "Scoped RBAC protects model, search, storage, state, and agent access",
         "GPT-4o uses sandbox-content-safety filters for harmful content and prompt attacks"
       ]
